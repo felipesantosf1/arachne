@@ -166,7 +166,14 @@ function frame(n){
         BR[k].setAttribute('d',`M${-rr*.9} 0Q0 ${-cur.bc*2} ${rr*.9} 0`);BR[k].setAttribute('opacity',cur.bo)
     }
 
+    // presas
+    FA.forEach((g,i)=>{
+        const dd=i?1:-1;
+        g.setAttribute('transform',`translate(${200+dd*22} 238) rotate(${dd*(cur.fa+Math.sin(t*34+i)*cur.fj)})`)
+    });
+
     // lágrima (triste), suor (medo), exclamação (surpresa), zzz (sono)
+    
     const p1=(t*.5)%1,p2=(t*1.3)%1;
     tear.setAttribute('transform',`translate(158 ${204+p1*70})`);
     tear.setAttribute('opacity',cur.tr*Math.sin(Math.PI*p1));
