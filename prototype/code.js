@@ -63,14 +63,14 @@ addEventListener('pointermove',e=>{
     my=e.clientY;
     
     if(base!=='sono'){
-        lastAct=n;if(v>4)set('surpreso',900)
+        lastAct=n;if(v>4&&!arrastando)set('surpreso',900)
     }
 });
 
 s.addEventListener('pointerenter',()=>act(true));
 
 s.addEventListener('pointermove',e=>{
-    if(base==='sono')return;
+    if(base==='sono'||press)return;
 
     pet+=Math.abs(e.movementX)+Math.abs(e.movementY);
     
