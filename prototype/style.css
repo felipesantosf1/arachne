@@ -20,3 +20,8 @@ button:hover{background:#222;color:#fff}
 button.active{background:#00f0ff;color:#000;border-color:#00f0ff;font-weight:bold;box-shadow:0 0 12px rgba(0,240,255,.3)}
 
 p{font-size:12px;color:#888;padding:0 16px;text-align:center;max-width:480px}
+
+/* ===== MODO DESKTOP (Electron): só a aranha, fundo transparente ===== */
+html.desktop, html.desktop body{background:transparent;color-scheme:normal}
+.desktop .stage{width:min(100vw,100vh);background:transparent;box-shadow:none;border-radius:0}
+.desktop .btn-group,.desktop p{display:none}

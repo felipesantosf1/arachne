@@ -1,3 +1,4 @@
+if (new URLSearchParams(location.search).get('modo') === 'desktop') document.documentElement.classList.add('desktop');
 const $=q=>document.querySelector(q),$$=q=>[...document.querySelectorAll(q)];
 const s=$('#s'),root=$('#root'),zg=$('#z'),gb=$('#gb'),tear=$('#tear'),sweat=$('#sweat'),ex=$('#ex');
 
@@ -78,17 +79,37 @@ s.addEventListener('pointermove',e=>{
     }
 });
 
-s.addEventListener('pointerdown',()=>{
-    const n=performance.now();
-    act(true);
+// ===== Clique x arraste =====
+// Ao apertar o botão ainda não sabemos o que a pessoa quer. Só ao ver se o mouse andou.
+let press=false,arrastando=false,sx=0,sy=0;
 
+s.addEventListener('pointerdown',e=>{
+    press=true;arrastando=false;
+    sx=e.screenX;sy=e.screenY;          // posição do mouse na TELA (não muda quando a janela se move)
+    s.setPointerCapture(e.pointerId);   // continua recebendo o mouse mesmo que ele saia da janela
+    act(true)
+});
+
+s.addEventListener('pointermove',e=>{
+    if(!press)return;
+    const dx=e.screenX-sx,dy=e.screenY-sy;
+    if(!arrastando&&Math.hypot(dx,dy)>5){arrastando=true;window.arachne?.comecarArraste()}
+    if(arrastando)window.arachne?.arrastar(dx,dy)
+});
+
+s.addEventListener('pointerup',()=>{
+    if(!press)return;
+    press=false;
+    if(arrastando){arrastando=false;return}   // foi arraste, então não conta como clique
+
+    const n=performance.now();                // foi clique
     clk=clk.filter(t=>n-t<2500);
     clk.push(n);
-    vy=-500;
-    qs=-.12;
-
+    if(y>=-1){vy=-500;qs=-.12}                // só pula se estiver no chão
     set(clk.length>=5?'bravo':'feliz',2500)
 });
+
+s.addEventListener('pointercancel',()=>{press=false;arrastando=false});
 
 addEventListener('keydown',()=>act(true));
 
