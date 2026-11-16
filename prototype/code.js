@@ -90,12 +90,23 @@ s.addEventListener('pointerdown',e=>{
     act(true)
 });
 
-s.addEventListener('pointermove',e=>{
-    if(!press)return;
-    const dx=e.screenX-sx,dy=e.screenY-sy;
-    if(!arrastando&&Math.hypot(dx,dy)>5){arrastando=true;window.arachne?.comecarArraste()}
-    if(arrastando)window.arachne?.arrastar(dx,dy)
-});
+// Movimento do mouse: no Electron vem da TELA INTEIRA (via main.js); no navegador, da própria página
+function moveuMouse(x,y){
+    const n=performance.now(),v=Math.hypot(x-mx,y-my)/Math.max(1,n-pt);
+    pt=n;mx=x;my=y;
+
+    if(base!=='sono'){
+        lastAct=n;
+
+        // Susto só se o movimento brusco for PERTO da aranha
+        const r=s.getBoundingClientRect();
+        const perto=Math.hypot(x-(r.left+r.width/2),y-(r.top+r.height/2))<r.width*.9;
+        if(v>4&&perto&&!arrastando)set('surpreso',900)
+    }
+}
+
+if(window.arachne)window.arachne.aoMoverMouse(moveuMouse);
+else addEventListener('pointermove',e=>moveuMouse(e.clientX,e.clientY));
 
 s.addEventListener('pointerup',()=>{
     if(!press)return;

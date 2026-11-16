@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 
 const TAMANHO = 320; // lado da janela, em pixels
@@ -27,6 +27,27 @@ function criarJanela() {
     janela.webContents.on('before-input-event', (evento, input) => {
         if (input.type === 'keyDown' && input.key === 'Escape') app.quit();
     });
+    
+    iniciarRastreioDoMouse();
+}
+
+// Pergunta ao sistema onde o mouse está e avisa a aranha, em coordenadas da JANELA
+function iniciarRastreioDoMouse() {
+    let ultimo = '';
+    setInterval(() => {
+        if (!janela || janela.isDestroyed()) return;
+
+        const p = screen.getCursorScreenPoint();   // mouse na tela inteira
+        const b = janela.getContentBounds();       // onde a janela está na tela
+        const x = p.x - b.x;                       // mouse relativo ao canto da janela
+        const y = p.y - b.y;
+
+        const chave = x + ',' + y;
+        if (chave === ultimo) return;              // nada mudou, não incomoda a página
+        ultimo = chave;
+
+        janela.webContents.send('mouse-global', x, y);
+    }, 16);                                        // ~60 vezes por segundo
 }
 
 // o arraste começou, guarda a posição atual da janela
@@ -47,3 +68,4 @@ ipcMain.on('arraste-mover', (evento, dx, dy) => {
 app.whenReady().then(criarJanela);
 
 app.on('window-all-closed', () => app.quit());
+
