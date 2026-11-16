@@ -1,0 +1,25 @@
+{
+  "name": "arachne",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felipesantosf1/arachne.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/felipesantosf1/arachne/issues"
+  },
+  "homepage": "https://github.com/felipesantosf1/arachne#readme",
+  "devDependencies": {
+    "electron": "^45.3.3"
+  }
+}
