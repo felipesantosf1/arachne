@@ -91,17 +91,22 @@ s.addEventListener('pointerdown',e=>{
 });
 
 // Movimento do mouse: no Electron vem da TELA INTEIRA (via main.js); no navegador, da própria página
-function moveuMouse(x,y){
+let ultSx=NaN,ultSy=NaN;
+function moveuMouse(x,y,sx,sy){
     const n=performance.now(),v=Math.hypot(x-mx,y-my)/Math.max(1,n-pt);
     pt=n;mx=x;my=y;
 
+    // Quem andou: o MOUSE ou só a janela (quando a aranha caminha)? Só o mouse conta como atividade.
+    const real=sx===undefined||sx!==ultSx||sy!==ultSy;
+    ultSx=sx;ultSy=sy;
+
     if(base!=='sono'){
-        lastAct=n;
+        if(real)lastAct=n;
 
         // Susto só se o movimento brusco for PERTO da aranha
         const r=s.getBoundingClientRect();
         const perto=Math.hypot(x-(r.left+r.width/2),y-(r.top+r.height/2))<r.width*.9;
-        if(v>4&&perto&&!arrastando)set('surpreso',900)
+        if(real&&v>4&&perto&&!arrastando)set('surpreso',900)
     }
 }
 
