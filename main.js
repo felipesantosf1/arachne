@@ -1,14 +1,18 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 
-const TAMANHO = 320; // lado da janela, em pixels
+const TAMANHO = 220; // lado da janela, em pixels
 let janela;                 // fora da função, para os recados enxergarem a janela
 let posInicial = [0, 0];    // onde a janela estava quando o arraste começou
 
 function criarJanela() {
+    const area = screen.getPrimaryDisplay().workArea;   // tela sem a barra de tarefas
+
     janela = new BrowserWindow({
         width: TAMANHO,
         height: TAMANHO,
+        x: area.x + area.width - TAMANHO - 40,    // canto direito, com 40 px de folga
+        y: area.y + area.height - TAMANHO - 10,   // logo acima da barra de tarefas
         transparent: true,    // fundo invisível
         frame: false,         // sem borda nem barra de título
         alwaysOnTop: true,    // fica por cima das outras janelas
