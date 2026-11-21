@@ -1,22 +1,3 @@
-// ============================================================
-// emocoes.js — a TABELA de emoções. Só dados, sem lógica.
-//
-// ROSTO   lt: pálpebra de cima (0 a 1)   lb: pálpebra de baixo (0 a 1)
-//         tk: inclinação da pálpebra (+ bravo, - triste)   sz: tamanho dos olhos
-//         fa: abertura das presas (+ para fora, - juntas)  fs: comprimento das presas
-//         fj: tremor das presas          h, l: matiz e luminosidade da cor
-// CORPO   sh: tremor do corpo   dy: desce (+) ou sobe (-)   sc: tamanho
-//         hop: quicadinhos      rot: inclinação (graus)
-//         bs: velocidade da respiração   ba: intensidade da respiração
-//         hd: cabeça cai para a frente
-// PERNAS  lgx: largura da postura   lgy: profundidade da postura
-//         (os pés só dão PASSO se a diferença for grande; senão o corpo se ajusta pela IK)
-// OLHAR   lk: quanto ela segue o mouse (0 = ignora)   gb: viés para baixo
-// EFEITOS tr: lágrima   sw: suor   ex: exclamação   zz: "z Z"  (0 = escondido, 1 = aparece)
-//
-// TREMOR: só o MEDO treme o corpo (sh). No bravo, só as presas vibram de leve.
-// ============================================================
-
 const BASE = {
     // rosto
     lt: 0.05, lb: 0, tk: 0, sz: 1, fa: 6, fs: 1, fj: 0, h: 24, l: 50,
@@ -43,9 +24,8 @@ const EMO_DIF = {
                 lgx: 1.05, lgy: 1.02, lk: 0.5, ex: 1 },
     bravo:    { lt: 0.2, lb: 0.08, tk: 24, fa: 24, fs: 1.1, fj: 0.8, h: 0, l: 55, sc: 1.02, bs: 3, ba: 0.025,
                 lgx: 1.07, lgy: 1.02 },
-    // SONO: pose de CARANGUEJEIRA (corpo no chão, patas relaxadas, cabeça caída, presas juntas,
-    // respiração lenta, ignora o mouse e olhos fechados).
-    // Prefere "enroladinha" (aranha-lobo)? Baixe lgx para ~0.8.
+    carinho:  { lt: 0.5, lb: 0.4, sz: 1.04, fa: 3, h: 340, l: 62, dy: 2, sc: 0.99, bs: 1.5, ba: 0.028,
+                lgx: 1.02, lk: 0.8 },
     sono:     { lt: 1, sz: 0.95, fa: -10, fs: 0.8, l: 28, dy: 27, sc: 0.94, rot: 2, bs: 0.45, ba: 0.03,
                 hd: 5, lgx: 1.08, lgy: 0.97, lk: 0, zz: 1 }
 };
@@ -54,4 +34,5 @@ const EMO_DIF = {
 const EMO = {};
 for (const k in EMO_DIF) EMO[k] = { ...BASE, ...EMO_DIF[k] };
 
-const NOME = { normal: 'Normal', curioso: 'Curioso', feliz: 'Feliz', triste: 'Triste', medo: 'Medo', surpreso: 'Surpreso', bravo: 'Bravo', sono: 'Sono' };
+const NOME = { normal: 'Normal', curioso: 'Curioso', feliz: 'Feliz', triste: 'Triste',
+medo: 'Medo', surpreso: 'Surpreso', bravo: 'Bravo', carinho: 'Carinho', sono: 'Sono' };

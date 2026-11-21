@@ -1,10 +1,3 @@
-// ============================================================
-// aranha.js — o DESENHO da aranha.
-// Cria pernas, rosto e efeitos UMA vez e, a cada quadro, só atualiza.
-// Não decide emoção nem lê o mouse: desenha o que o code.js mandar.
-// Usa do code.js (na hora de rodar): cur, tgt, emo, settleUntil
-// ============================================================
-
 const svgNS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('spiderSvg');
 const legsLayer = document.getElementById('legs-layer');
@@ -17,7 +10,6 @@ const COLORS = {
 };
 
 // Pose de DESCANSO (coordenadas originais, absolutas).
-// Mais abaixo convertemos para relativas ao centro da cabeça.
 const legs = [
     // === LADO ESQUERDO ===
     { side: -1, root: [386, 232], knee: [324, 166], ankle: [280, 212], tip: [256, 256], scale: 0.90 },
@@ -164,13 +156,6 @@ function makeLeg(side, scale) {
     };
 }
 
-// ============================================================
-// CINEMÁTICA INVERSA (IK) de 2 segmentos
-// Dado: raiz O, alvo A, comprimentos l1 (fêmur) e l2 (tíbia).
-// Os 3 lados do triângulo (l1, l2, distância O→A) são conhecidos,
-// então a lei dos cossenos dá o ângulo do joelho.
-// s = lado para onde o joelho dobra (+1 ou -1).
-// ============================================================
 function solveIK(O, A, l1, l2, s) {
     const dx = A[0] - O[0];
     const dy = A[1] - O[1];

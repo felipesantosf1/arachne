@@ -1,9 +1,3 @@
-// ============================================================
-// code.js — a VIDA da aranha: emoções, olhar, pulo e interações.
-// O desenho fica no aranha.js; a tabela de emoções no emocoes.js.
-// Usa de aranha.js: svg, EYES, desenharAranha
-// Usa de emocoes.js: EMO, NOME
-// ============================================================
 if (new URLSearchParams(location.search).get('modo') === 'desktop') document.documentElement.classList.add('desktop');
 const $ = q => document.querySelector(q), $$ = q => [...document.querySelectorAll(q)];
 

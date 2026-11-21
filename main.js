@@ -1,51 +1,53 @@
+// main.js — processo principal: cria a janela, vigia o mouse e atende pedidos da página
 const { app, BrowserWindow, ipcMain, screen, Menu } = require('electron');
 const path = require('path');
 
-// ===== Tamanho do pet =====
-const ESCALA = 0.78;
-const LARGURA = Math.round(360 * ESCALA);   // 360 x 220 = tamanho do desenho (viewBox) da aranha nova
-const ALTURA = Math.round(220 * ESCALA);
+// ---------- Tamanho do pet ----------
+const ESCALA = 0.42;                        // fator de redução da aranha
+const LARGURA = Math.round(600 * ESCALA);   // largura da janela (px)
+const ALTURA = Math.round(395 * ESCALA);    // altura da janela (px)
 
-let janela;
-let posInicial = [0, 0];
+let janela;                // a janela do pet
+let posInicial = [0, 0];   // posição da janela ao começar a arrastar [x, y]
 
+// ---------- Criar a janela ----------
 function criarJanela() {
     const area = screen.getPrimaryDisplay().workArea;   // tela sem a barra de tarefas
 
     janela = new BrowserWindow({
         width: LARGURA,
         height: ALTURA,
-        x: area.x + area.width - LARGURA - 40,           // canto inferior direito
-        y: area.y + area.height - ALTURA,                // "pés" logo acima da barra de tarefas
-        transparent: true,    // fundo invisível
-        frame: false,         // sem borda nem barra de título
-        alwaysOnTop: true,    // fica por cima das outras janelas
+        x: area.x + area.width - LARGURA - 40,   // canto inferior direito
+        y: area.y + area.height - ALTURA,        // "pés" logo acima da barra de tarefas
+        transparent: true,     // fundo invisível
+        frame: false,          // sem borda nem barra de título
+        alwaysOnTop: true,     // fica por cima das outras janelas
         resizable: false,
-        hasShadow: false,      // tira a sombra da janela (macOS)
-        skipTaskbar: true,                               // não aparece como programa na barra
+        hasShadow: false,      // sem sombra da janela (macOS)
+        skipTaskbar: true,     // não aparece na barra de tarefas
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js')   // liga a portaria
+            preload: path.join(__dirname, 'preload.js')   // liga a ponte (window.arachne)
         }
     });
 
     janela.setIgnoreMouseEvents(true);   // começa "fantasma"; o corpo.js a torna sólida sobre a aranha
 
     janela.loadFile(path.join(__dirname, 'prototype', 'index.html'), {
-        query: { modo: 'desktop' }   // vira index.html?modo=desktop
+        query: { modo: 'desktop' }       // vira index.html?modo=desktop
     }).catch(console.error);
 
-    // Sem moldura não existe o "X" para fechar. Por enquanto, Esc fecha o programa.
+    // Sem moldura não há "X"; por enquanto Esc fecha o programa
     janela.webContents.on('before-input-event', (evento, input) => {
         if (input.type === 'keyDown' && input.key === 'Escape') app.quit();
     });
-    
+
     iniciarRastreioDoMouse();
 }
 
-// Pergunta ao sistema onde o mouse está e avisa a aranha, em coordenadas da JANELA
-// Pergunta ao sistema onde o mouse está e avisa a aranha
+// ---------- Rastreio do mouse ----------
+// Lê o mouse da tela inteira e avisa a página (coordenadas relativas à janela)
 function iniciarRastreioDoMouse() {
-    let ultimo = '';
+    let ultimo = '';   // última posição enviada, para não repetir
     setInterval(() => {
         if (!janela || janela.isDestroyed()) return;
 
@@ -58,15 +60,14 @@ function iniciarRastreioDoMouse() {
         if (chave === ultimo) return;              // nada mudou, não incomoda a página
         ultimo = chave;
 
-        // manda também a posição na TELA (p.x, p.y), para a página saber
-        // se foi o MOUSE que andou ou só a janela que se mexeu
+        // envia também p.x, p.y (tela) para a página distinguir se o MOUSE andou ou só a janela
         janela.webContents.send('mouse-global', x, y, p.x, p.y);
-    }, 16);
+    }, 16);   // ~60 vezes por segundo
 }
 
-// o arraste começou, guarda a posição atual da janela
+// ---------- Arraste ----------
 ipcMain.on('arraste-inicio', () => {
-    posInicial = janela.getPosition();
+    posInicial = janela.getPosition();   // guarda onde a janela estava
 });
 
 ipcMain.on('arraste-mover', (evento, dx, dy) => {
@@ -78,7 +79,8 @@ ipcMain.on('arraste-mover', (evento, dx, dy) => {
     });
 });
 
-
+// ---------- Corpo ----------
+// A página pergunta: onde a janela está e qual é a área útil da tela?
 ipcMain.handle('estado', () => {
     const [x, y] = janela.getPosition();
     const area = screen.getDisplayMatching(janela.getBounds()).workArea;
@@ -90,19 +92,17 @@ ipcMain.on('mover-janela', (evento, x, y) => {
     janela.setBounds({ x, y, width: LARGURA, height: ALTURA });
 });
 
-// A página avisa se o mouse está sobre a aranha (sólida) ou fora dela (atravessa)
+// A página avisa se o mouse está sobre a aranha (sólida) ou fora (atravessa)
 ipcMain.on('interativo', (evento, sim) => {
     janela.setIgnoreMouseEvents(!sim);
 });
 
-// Clique direito: menu com "Sair"
+// ---------- Menu e ciclo de vida ----------
 ipcMain.on('menu', () => {
     Menu.buildFromTemplate([
         { label: 'Sair', click: () => app.quit() }
     ]).popup({ window: janela });
 });
 
-app.whenReady().then(criarJanela);
-
-app.on('window-all-closed', () => app.quit());
-
+app.whenReady().then(criarJanela);                  // abre a janela quando o Electron estiver pronto
+app.on('window-all-closed', () => app.quit());      // fechou tudo, encerra o programa
