@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,78 +8,82 @@
 </head>
 <body>
     <div class="stage">
-        <svg id="s" viewBox="0 0 400 400">
+        <svg id="spiderSvg" viewBox="226 114 360 220" xmlns="http://www.w3.org/2000/svg">
             <defs>
-
-                <filter id="glow" x="-30%" y="-80%" width="160%" height="260%">
-                    <feGaussianBlur id="gb" stdDeviation="6" result="b"/>
-                    <feMerge>
-                        <feMergeNode in="b"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-
-                <filter id="glow2" x="-50%" y="-20%" width="200%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="b"/>
-                    <feMerge>
-                        <feMergeNode in="b"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-
-                <radialGradient id="edge" cx="50%" cy="45%" r="55%">
-                    <stop offset=".65" style="stop-color:#000;stop-opacity:0"/>
-                    <stop offset="1" style="stop-color:#000;stop-opacity:.75"/>
+                <!-- Gradiente do abdômen -->
+                <radialGradient id="abdomenGrad" cx="38%" cy="32%" r="68%">
+                    <stop offset="0%" stop-color="#2c2c34" />
+                    <stop offset="65%" stop-color="#141418" />
+                    <stop offset="100%" stop-color="#09090b" />
                 </radialGradient>
 
-                <clipPath id="c9">
-                    <circle r="9"/>
-                </clipPath>
-                <clipPath id="c16">
-                    <circle r="16"/>
-                </clipPath>
-                <clipPath id="c28">
-                    <circle r="28"/>
-                </clipPath>
-                
+                <!-- Gradiente da cabeça -->
+                <radialGradient id="headGrad" cx="42%" cy="30%" r="70%">
+                    <stop offset="0%" stop-color="#232329" />
+                    <stop offset="70%" stop-color="#0e0e12" />
+                    <stop offset="100%" stop-color="#070709" />
+                </radialGradient>
+
+                <!-- Sombra do corpo no chão -->
+                <radialGradient id="floorShadow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#000" stop-opacity="0.55" />
+                    <stop offset="60%" stop-color="#000" stop-opacity="0.22" />
+                    <stop offset="100%" stop-color="#000" stop-opacity="0" />
+                </radialGradient>
+
+                <!-- Brilho dos olhos e presas -->
+                <filter id="orangeGlow" x="-35%" y="-35%" width="170%" height="170%">
+                    <feGaussianBlur stdDeviation="2.4" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
             </defs>
 
-            <!-- NOVO: caixa externa (o corpo.js inclina o corpo todo ao andar) -->
-            <g id="externo">
-                <g id="root">
+            <!-- #spider fica PARADO: só define a origem (centro da cabeça) -->
+            <g id="spider" transform="translate(406 254)">
 
-                    <!-- NOVO: as patas (o corpo.js desenha aqui) -->
-                    <g id="legs"></g>
+                <!-- Sombra do corpo: uma linha fina rente ao chão (câmera na altura do chão). -->
+                <ellipse id="shadow" cx="0" cy="73" rx="105" ry="5" fill="url(#floorShadow)" />
 
-                    <ellipse cx="200" cy="190" rx="165" ry="125" fill="#0e0f13" stroke="#1d3a44" stroke-width="2"/>
-                    
-                    <ellipse cx="200" cy="190" rx="165" ry="125" fill="url(#edge)"/>
-                    
-                    <!-- NOVO: caixa do rosto (olhos + presas), que desliza ao andar -->
-                    <g id="rosto">
+                <!-- Sombrinhas onde os pés tocam o chão (o JS preenche) -->
+                <g id="contacts"></g>
 
-                        <g id="eyes" filter="url(#glow)"></g>
+                <!-- #bodyG é o corpo inteiro: treme, pula, inclina e respira -->
+                <g id="bodyG">
 
-                        <g id="fangs" filter="url(#glow2)">
-                            <g class="fa"><rect x="-14" y="-4" width="28" height="38" rx="13" fill="#0b0c10" stroke="#1d3a44" stroke-width="2"/>
-                                <path class="fang" d="M-6 28Q0 32 6 28Q4 52 0 66Q-4 52-6 28Z"/>
-                            </g>
-                            <g class="fa"><rect x="-14" y="-4" width="28" height="38" rx="13" fill="#0b0c10" stroke="#1d3a44" stroke-width="2"/>
-                                <path class="fang" d="M-6 28Q0 32 6 28Q4 52 0 66Q-4 52-6 28Z"/>
-                            </g>
-                        </g>
-
+                    <!-- Abdômen: grupo próprio, porque ele se move (paralaxe) -->
+                    <g id="abd">
+                        <clipPath id="abdClip"><circle r="58" /></clipPath>
+                        <circle r="58" fill="url(#abdomenGrad)" stroke="#6b7280" stroke-width="4" />
+                        <ellipse id="abdMark" class="glow" rx="6" ry="26" clip-path="url(#abdClip)" opacity="0.4" />
+                        <path d="M -38 -26 A 50 50 0 0 1 32 -36"
+                            fill="none" stroke="#ffffff" stroke-opacity="0.09"
+                            stroke-width="2.5" stroke-linecap="round" />
                     </g>
 
-                    <path id="tear" class="dr" opacity="0" d="M0 -9Q7 2 0 8Q-7 2 0 -9Z"/>
-                    
-                    <path id="sweat" class="dr" opacity="0" d="M0 -9Q7 2 0 8Q-7 2 0 -9Z"/>
+                    <!-- Pernas (o JS preenche) -->
+                    <g id="legs-layer"></g>
 
-                    <text id="ex" class="exc" x="338" y="96" text-anchor="middle" opacity="0" transform="rotate(12 338 96)">!</text>
-                    
-                    <g id="z" opacity="0" transform="translate(322,110)">
+                    <!-- Cabeça -->
+                    <g id="head">
+                        <circle r="47" fill="url(#headGrad)" stroke="#71717a" stroke-width="4" />
+                        <path d="M -32 -32 A 42 42 0 0 1 32 -32"
+                            fill="none" stroke="#ffffff" stroke-opacity="0.11"
+                            stroke-width="2" stroke-linecap="round" />
+                        <!-- Olhos, presas, lágrima e suor (o JS preenche) -->
+                        <g id="face" filter="url(#orangeGlow)"></g>
+                    </g>
+
+                    <!-- Exclamação (surpreso) -->
+                    <text id="ex" class="exc" x="58" y="-52" text-anchor="middle"
+                        opacity="0" transform="rotate(12 58 -52)">!</text>
+
+                    <!-- "z Z" do sono -->
+                    <g id="zzz" transform="translate(48 -62)" opacity="0">
                         <text class="z">z</text>
-                        <text class="z" x="16" y="-16" style="animation-delay:.8s">Z</text>
+                        <text class="z" x="14" y="-14" style="animation-delay: 0.8s">Z</text>
                     </g>
 
                 </g>
@@ -87,8 +91,12 @@
         </svg>
     </div>
 
-    <div class="btn-group" id="btns"></div>
-    
+    <!-- Botões de teste (só aparecem no navegador, não no desktop) -->
+    <div id="btns"></div>
+
+    <!-- A ORDEM importa: cada arquivo usa o que o anterior definiu -->
+    <script src="emocoes.js"></script>
+    <script src="aranha.js"></script>
     <script src="code.js"></script>
     <script src="corpo.js"></script>
 </body>

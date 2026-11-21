@@ -2,9 +2,9 @@ const { app, BrowserWindow, ipcMain, screen, Menu } = require('electron');
 const path = require('path');
 
 // ===== Tamanho do pet =====
-const ESCALA = 0.42;
-const LARGURA = Math.round(600 * ESCALA);
-const ALTURA = Math.round(395 * ESCALA);
+const ESCALA = 0.78;
+const LARGURA = Math.round(360 * ESCALA);   // 360 x 220 = tamanho do desenho (viewBox) da aranha nova
+const ALTURA = Math.round(220 * ESCALA);
 
 let janela;
 let posInicial = [0, 0];
