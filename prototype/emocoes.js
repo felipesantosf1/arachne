@@ -26,8 +26,8 @@ const EMO_DIF = {
                 lgx: 1.07, lgy: 1.02 },
     carinho:  { lt: 0.3, lb: 0.12, sz: 1.06, fa: 8, h: 340, l: 62, dy: 4, sc: 0.98, rot: 4, hd: -3,
                 bs: 1.5, ba: 0.028, lgx: 1.03, lgy: 0.98, lk: 0.8, sh: 0.3, bal: 2 },
-    sono:     { lt: 1, sz: 0.95, fa: -10, fs: 0.8, l: 28, dy: 27, sc: 0.94, rot: 2, bs: 0.45, ba: 0.03,
-                hd: 5, lgx: 1.08, lgy: 0.97, lk: 0, zz: 1 }
+    sono:     { lt: 1, sz: 0.95, fa: -10, fs: 0.8, l: 28, dy: 22, sc: 0.94, rot: 2, bs: 0.45, ba: 0.03,
+                hd: -2, lgx: 1.08, lgy: 0.97, lk: 0, zz: 1 }
 };
 
 // Junta BASE + diferenças => tabela completa (todas as chaves em todas as emoções)
