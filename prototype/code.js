@@ -7,6 +7,8 @@ const tgt = { ...EMO.normal };    // valores desejados: cur "persegue" tgt (tran
 let emo = 'normal';               // emoção do momento
 let base = 'normal';              // emoção "de fundo", a que ela volta (normal ou sono)
 let timer;
+let rapidez = 5;                  // 5 = emoção "surge" devagar; ≥20 = instantâneo (surpresa)
+const cv = {};                    // velocidade de cada valor (mola)
 let settleUntil = 0;              // até quando os pés se ajeitam por inteiro (dormir/acordar)
 
 // ---------- Estado do corpo ----------
@@ -22,6 +24,8 @@ let wx = 0, wy = 0, gt = 0;       // olhar ao redor sozinha
 // ---------- Tempo e piscadas ----------
 let last = performance.now(), lastAct = last;
 let blink = 0, nextBlink = 2000;
+let lento = 0, faseLento = 0, proxLento = 2;
+let afago = 0, mexS = 0, mxh = 0, myh = 0;     // cabeça no carinho (gato)
 const fl = new Array(EYES.length).fill(0);    // "tremida de luz" dos olhos secundários
 
 // ---------- Interação ----------
@@ -35,6 +39,7 @@ function set(n, ms) {
     if (n === 'surpreso' && emo !== 'surpreso' && by >= -1) bv = -320;              // pulinho de susto (só do chão)
     if (n === 'sono' || emo === 'sono') settleUntil = performance.now() / 1000 + 4; // dormir/acordar: pés se ajeitam
     emo = n;
+    rapidez = n === 'surpreso' ? 30 : n === 'sono' ? 2.5 : 5;   // só a surpresa é brusca
     Object.assign(tgt, EMO[n]);
     clearTimeout(timer);
     if (ms) timer = setTimeout(() => set(base), ms);
@@ -81,7 +86,8 @@ function centro() {
 // No Electron, o movimento vem da TELA INTEIRA (via main.js); no navegador, da própria página.
 function moveuMouse(x, y, sx, sy) {
     const n = performance.now();
-    const v = Math.hypot(x - mx, y - my) / Math.max(1, n - pt);
+    const dist = Math.hypot(x - mx, y - my);
+    const v = dist / Math.max(1, n - pt);
     pt = n; mx = x; my = y;
 
     // Quem andou: o MOUSE ou só a janela? Só o mouse conta como atividade.
@@ -108,6 +114,13 @@ function moveuMouse(x, y, sx, sy) {
             set('surpreso', 900);
             calmaAte = n + 2500;      // 2,5 s de calma antes do próximo susto
         }
+
+        const [ccx, ccy, lg] = centro(), s = lg / 360;
+        const sobreCorpo = ((x - ccx) / (100 * s)) ** 2 + ((y - ccy + 5 * s) / (75 * s)) ** 2 < 1;
+        if (real && sobreCorpo && v < 3 && !press && !arrastando && emo !== 'surpreso') {
+            pet = Math.min(pet + dist, 120);
+            if (pet >= 90) set('carinho', 1800);      // enquanto faz carinho, o tempo é renovado
+        }
     }
 }
 
@@ -115,15 +128,6 @@ if (window.arachne) window.arachne.aoMoverMouse(moveuMouse);
 else addEventListener('pointermove', e => moveuMouse(e.clientX, e.clientY));
 
 svg.addEventListener('pointerenter', () => act(true));
-
-// Carinho: passar o mouse por cima, de um lado a outro
-svg.addEventListener('pointermove', e => {
-    if (base === 'sono' || press || emo === 'surpreso') return;
-    const mov = Math.abs(e.movementX) + Math.abs(e.movementY);
-    if (mov > 50) return;                  // movimento brusco não é carinho
-    pet += mov;
-    if (pet > 400) { pet = 0; set('feliz', 2500); }
-});
 
 // Clique x arraste: ao apertar ainda não sabemos o que a pessoa quer. Só ao ver se o mouse andou.
 svg.addEventListener('pointerdown', e => {
@@ -163,20 +167,36 @@ function frame(n) {
     const t = n / 1000;
 
     // 1. suaviza todos os valores em direção à emoção desejada
-    for (const k in cur) cur[k] += (tgt[k] - cur[k]) * Math.min(1, dt * 6);
+    for (const k in cur) {
+        let d = tgt[k] - cur[k];
+        if (k === 'h') d = ((d + 540) % 360) - 180;          // cor: caminho mais curto no círculo
+        if (rapidez >= 20) { cur[k] += d * Math.min(1, dt * rapidez); cv[k] = 0; }   // surpresa: seco
+        else {                                                // demais: mola, começa devagar e "surge"
+            cv[k] = (cv[k] || 0) + (rapidez * rapidez * d - 2 * rapidez * (cv[k] || 0)) * dt;
+            cur[k] += cv[k] * dt;
+        }
+    }
+    cur.h = (cur.h + 360) % 360;
 
     // 2. 20 segundos sem atividade: dorme
     if (base !== 'sono' && n - lastAct > 20000) { base = 'sono'; set('sono'); }
 
     // 3. carinho esfria, piscadas
-    pet = Math.max(0, pet - 300 * dt);
+    pet = Math.max(0, pet - 120 * dt);
     nextBlink -= dt * 1000;
     if (nextBlink < 0) { blink = 1; nextBlink = 2000 + Math.random() * 3500; }
     blink = Math.max(0, blink - dt * 8);
+        // piscada lenta de gato: só durante o carinho (~1,4 s, fecha no meio e reabre)
+    if (emo === 'carinho') {
+        proxLento -= dt;
+        if (proxLento < 0 && faseLento === 0) { faseLento = 0.001; proxLento = 3 + Math.random() * 3; }
+    }
+    if (faseLento > 0) { faseLento += dt / 1.4; if (faseLento >= 1) faseLento = 0; }
+    lento = faseLento > 0 ? Math.min(1, Math.sin(Math.PI * faseLento) * 1.3) : 0;
     for (let i = 0; i < fl.length; i++) fl[i] = Math.max(0, fl[i] - dt * 6);
 
     // 4. olhar: segue o cursor; parada há 4s, olha ao redor sozinha
-    const [cx, cy] = centro();
+    const [cx, cy, larg] = centro();
     let ax = mx - cx, ay = my - cy;
     if (base !== 'sono' && n - lastAct > 4000) {
         if (n > gt) {
@@ -192,6 +212,19 @@ function frame(n) {
     lx += (ax / d * m - lx) * f;
     ly += (ay / d * m - ly) * f;
     const lyv = ly + cur.gb;                          // triste olha um pouco para baixo
+
+    // 4b. cabeça no carinho (gato): vai até a mão, esfrega no ritmo, ergue o queixo, empurra quando a mão para
+    afago += ((emo === 'carinho' ? 1 : 0) - afago) * Math.min(1, dt * 3);       // 0 a 1: o carinho está rolando
+    mexS  += (Math.min(1, pet / 60) - mexS) * Math.min(1, dt * 8);              // a mão está se mexendo agora?
+    const k6 = Math.min(1, dt * 6);
+    mxh += (Math.max(-1, Math.min(1, (mx - cx) / (larg * 0.25))) * afago - mxh) * k6;   // mão à esquerda/direita
+    myh += (Math.max(-1, Math.min(1, (my - cy) / (larg * 0.2))) * afago - myh) * k6;    // mão acima/abaixo
+    const esfrega = Math.sin(t * 6) * mexS * afago;                             // vai e volta no ritmo da mão
+    const empurra = afago * (1 - mexS);                                         // mão parou: empurra de volta
+    const cabX = mxh * 8 + esfrega * 3 + mxh * empurra * 4;                     // desloca para a mão
+    const cabY = -afago * 4 - Math.max(0, myh) * 4;                             // queixo sobe (mais com a mão embaixo)
+    const cabR = mxh * 10 + esfrega * 3;                                        // inclina a lateral contra a mão
+    const cabS = 1 + afago * 0.04 + empurra * 0.03;                             // pescoço estica para a frente
 
     // 5. física: pulo + mola de amassar/esticar
     bv += 2600 * dt;
@@ -211,10 +244,10 @@ function frame(n) {
 
     // 7. desenha
     desenharAranha({
-        dt, t, lx, ly: lyv, blink, fl,
+        dt, t, lx, ly: lyv, blink: Math.max(blink, lento), fl, cabX, cabY, cabR, cabS,
         btx: shx + lx * 5,                              // o peso se desloca para onde ela olha
         bty: by - hop + cur.dy + shy + lyv * 2,
-        brot: cur.rot + lx * 1.5,
+        brot: cur.rot + lx * 1.5 + Math.sin(t * 2.2) * cur.bal,
         bsx: cur.sc * (1 + breath + qs),
         bsy: cur.sc * (1 - breath - qs)
     });

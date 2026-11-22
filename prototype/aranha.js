@@ -345,7 +345,7 @@ let stepCooldown = 0;
 //   btx, bty     : deslocamento do corpo      brot : inclinação (graus)
 //   bsx, bsy     : escala do corpo (respiração, amassar)
 // ============================================================
-function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy }) {
+function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, cabX = 0, cabY = 0, cabR = 0, cabS = 1 }) {
     // 1. cor da emoção
     svg.style.setProperty('--g', `hsl(${cur.h} 100% ${cur.l}%)`);
 
@@ -437,7 +437,7 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy }) 
     });
 
     // 5. perspectiva: cada camada anda uma quantidade diferente
-    head.setAttribute('transform', `translate(${lx * PARALAXE.head[0]} ${ly * PARALAXE.head[1] + cur.hd})`);
+    head.setAttribute('transform', `translate(${lx * PARALAXE.head[0] + cabX} ${ly * PARALAXE.head[1] + cur.hd + cabY}) rotate(${cabR}) scale(${cabS})`);
     face.setAttribute('transform', `translate(${lx * PARALAXE.face[0]} ${ly * PARALAXE.face[1]})`);
     abd.setAttribute('transform', `translate(${-lx * PARALAXE.abd[0]} ${ABD_Y - ly * PARALAXE.abd[1]}) scale(${1 - ly * 0.05})`);
     abdMark.setAttribute('cx', -lx * 10);
