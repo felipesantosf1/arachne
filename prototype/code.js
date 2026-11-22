@@ -1,222 +1,226 @@
 if (new URLSearchParams(location.search).get('modo') === 'desktop') document.documentElement.classList.add('desktop');
-const $=q=>document.querySelector(q),$$=q=>[...document.querySelectorAll(q)];
-const s=$('#s'),root=$('#root'),zg=$('#z'),gb=$('#gb'),tear=$('#tear'),sweat=$('#sweat'),ex=$('#ex');
+const $ = q => document.querySelector(q), $$ = q => [...document.querySelectorAll(q)];
 
-const R=[9,16,28,28,16,9],GAP=12;let x0=200-(R.reduce((a,r)=>a+2*r,0)+GAP*5)/2;
-const EY=R.map(r=>{const x=x0+r;x0+=2*r+GAP;return[x,170,r]});
+// ---------- Emoção ----------
+const cur = { ...EMO.normal };    // valores que aparecem na tela
+const tgt = { ...EMO.normal };    // valores desejados: cur "persegue" tgt (transição suave)
+let emo = 'normal';               // emoção do momento
+let base = 'normal';              // emoção "de fundo", a que ela volta (normal ou sono)
+let timer;
+let settleUntil = 0;              // até quando os pés se ajeitam por inteiro (dormir/acordar)
 
-$('#eyes').innerHTML=EY.map(([x,y,r],i)=>`<g class="eye"> <g clip-path="url(#c${r})"><circle class="ey" r="${r}"/>${r>20?`<ellipse class="pu" rx="${r*.3}" ry="${r*.5}" fill="#02060a"/>`:''}<circle cx="${-r*.3}" cy="${-r*.38}" r="${r*.2}" fill="#fff" opacity=".9"/><g class="lg"><rect class="lt" x="${-r*2}" y="${-r*2}" width="${r*4}" fill="#0e0f13"/><rect class="lb" x="${-r*2}" width="${r*4}" fill="#0e0f13"/></g></g><path class="cl" opacity="0" d="M${-r*.8} 0Q0 ${r*.45} ${r*.8} 0"/>${i>0&&i<5?'<g class="bg"><path class="br" opacity="0"/></g>':''}</g>`).join('');
-const EL=$$('.eye'),LT=$$('.lt'),LB=$$('.lb'),LG=$$('.lg'),PU=$$('.pu'),CL=$$('.cl'),BG=$$('.bg'),BR=$$('.br'),FA=$$('.fa');
+// ---------- Estado do corpo ----------
+let by = 0, bv = 0;               // pulo: altura (negativo = no ar) e velocidade
+let qs = 0, qv = 0;               // mola de amassar/esticar
+let breathPhase = 0, hopPhase = 0;  // a fase AVANÇA (soma dt): mudar a velocidade não dá tranco
 
-const E={
-    normal:  {lt:.05,lb:0,  tk:0,  ps:1,  sz:1,   asy:0,  bo:0, bh:8, bk:0,  bc:0,fa:18, fj:0,rot:0, dy:0, sc:1,   amp:1,  spd:1,  hop:0, sh:0,  jit:0,  look:1,  gb:0,  h:185,l:52,gs:6, z:0,tr:0,sw:0,ex:0},
-    curioso: {lt:0,  lb:0,  tk:-6, ps:1.1,sz:1.08,asy:.12,bo:.6,bh:14,bk:-6, bc:3,fa:30, fj:0,rot:7, dy:0, sc:1,   amp:1.2,spd:1.3,hop:0, sh:0,  jit:0,  look:1.4,gb:0,  h:270,l:62,gs:8, z:0,tr:0,sw:0,ex:0},
-    feliz:   {lt:0,  lb:.42,tk:0,  ps:1.1,sz:1.05,asy:0,  bo:.6,bh:14,bk:0,  bc:8,fa:8,  fj:1.5,rot:0,dy:0,sc:1,   amp:2,  spd:2.4,hop:10,sh:0,  jit:0,  look:.6, gb:0,  h:150,l:55,gs:10,z:0,tr:0,sw:0,ex:0},
-    triste:  {lt:.12,lb:0,  tk:-8, ps:.95,sz:1.08,asy:0,  bo:.9,bh:5, bk:-24,bc:0,fa:0,  fj:0,rot:-3,dy:10,sc:.98, amp:.5, spd:.5, hop:0, sh:0,  jit:0,  look:.25,gb:.7, h:225,l:50,gs:4, z:0,tr:1,sw:0,ex:0},
-    medo:    {lt:0,  lb:.1, tk:-10,ps:.4, sz:1.12,asy:0,  bo:.9,bh:24,bk:-16,bc:0,fa:26, fj:3,rot:0, dy:8, sc:.92, amp:1.6,spd:6,  hop:0, sh:2.2,jit:.5, look:.1, gb:0,  h:75, l:58,gs:8, z:0,tr:0,sw:1,ex:0},
-    surpreso:{lt:0,  lb:0,  tk:0,  ps:.35,sz:1.3, asy:0,  bo:.9,bh:30,bk:0,  bc:6,fa:-14,fj:0,rot:0, dy:-4,sc:1.06, amp:.6, spd:1,  hop:0, sh:0,  jit:0,  look:.4, gb:0,  h:190,l:90,gs:12,z:0,tr:0,sw:0,ex:1},
-    bravo:   {lt:.3, lb:.08,tk:22, ps:.9, sz:1,   asy:0,  bo:.9,bh:2, bk:26, bc:0,fa:-35,fj:1,rot:0, dy:0, sc:1,   amp:1.4,spd:3,  hop:4, sh:1,  jit:0,  look:1,  gb:0,  h:0,  l:55,gs:10,z:0,tr:0,sw:0,ex:0},
-    sono:    {lt:1,  lb:0,  tk:0,  ps:.9, sz:.95, asy:0,  bo:0, bh:8, bk:0,  bc:0,fa:2,  fj:0,rot:4, dy:8, sc:.98, amp:.8, spd:.35,hop:0, sh:0,  jit:0,  look:0,  gb:0,  h:185,l:32,gs:3, z:1,tr:0,sw:0,ex:0},
-    vergonha:{},
-    confuso: {},
-    nojo:    {},
-};
+// ---------- Olhar ----------
+let mx = innerWidth / 2, my = innerHeight / 2, pt = performance.now();
+let lx = 0, ly = 0;               // para onde ela está virada (-1 a 1)
+let wx = 0, wy = 0, gt = 0;       // olhar ao redor sozinha
 
-const NOME={normal:'Normal',curioso:'Curioso',feliz:'Feliz',triste:'Triste',medo:'Medo',surpreso:'Surpreso',bravo:'Bravo',sono:'Sono'};
-const cur={...E.normal},tgt={...E.normal};
-let emo='normal',base='normal',tm,mx=innerWidth/2,my=innerHeight/2,pt=performance.now(),last=pt,lastAct=pt;
-let ux=0,uy=0,wx=0,wy=0,gt=0,blink=0,nb=2000,y=0,vy=0,qs=0,qv=0,pet=0,clk=[];const fl=[0,0,0,0,0,0];
+// ---------- Tempo e piscadas ----------
+let last = performance.now(), lastAct = last;
+let blink = 0, nextBlink = 2000;
+const fl = new Array(EYES.length).fill(0);    // "tremida de luz" dos olhos secundários
 
-function set(n,ms){if(n==='surpreso'&&emo!=='surpreso')vy=-380; // pulinho de susto
-    emo=n;Object.assign(tgt,E[n]);clearTimeout(tm);if(ms)tm=setTimeout(()=>set(base),ms);
-    $$('.emotion-btn').forEach(b=>b.classList.toggle('active',b.dataset.k===n))
+// ---------- Interação ----------
+let pet = 0, clk = [];
+let calmaAte = 0;                 // depois de um susto, ela não se assusta de novo por um tempo
+let press = false, arrastando = false, pressSx = 0, pressSy = 0;
+let ultSx = NaN, ultSy = NaN;
+
+// Troca de emoção. ms > 0: depois desse tempo ela volta para a emoção de fundo (base).
+function set(n, ms) {
+    if (n === 'surpreso' && emo !== 'surpreso' && by >= -1) bv = -320;              // pulinho de susto (só do chão)
+    if (n === 'sono' || emo === 'sono') settleUntil = performance.now() / 1000 + 4; // dormir/acordar: pés se ajeitam
+    emo = n;
+    Object.assign(tgt, EMO[n]);
+    clearTimeout(timer);
+    if (ms) timer = setTimeout(() => set(base), ms);
+    $$('.emotion-btn').forEach(b => b.classList.toggle('active', b.dataset.k === n));
 }
 
-function act(wake){
-    lastAct=performance.now();
-    if(wake&&base==='sono') {
-        base='normal';set('curioso',1500)
+// Registra atividade; se estava dormindo e é um "toque" de verdade (wake), acorda curiosa
+function act(wake) {
+    lastAct = performance.now();
+    if (wake && base === 'sono') {
+        base = 'normal';
+        set('curioso', 1500);
     }
 }
 
-Object.keys(E).forEach(k=>{
-    const b=document.createElement('button');
-
-    b.className='emotion-btn';
-    b.dataset.k=k;
-    b.textContent=NOME[k];
-
-    b.onclick=()=>{
-        base=k==='sono'?'sono':'normal';
-        lastAct=performance.now();
-        set(k,k==='sono'?0:4000)
+// ---------- Botões de teste (só aparecem no navegador) ----------
+Object.keys(EMO).forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'emotion-btn';
+    b.dataset.k = k;
+    b.textContent = NOME[k];
+    b.onclick = () => {
+        base = k === 'sono' ? 'sono' : 'normal';
+        lastAct = performance.now();
+        set(k, k === 'sono' ? 0 : 4000);
     };
-
-    $('#btns').append(b)
+    $('#btns').append(b);
 });
+{
+    let escuro = false;
+    const b = document.createElement('button');
+    b.textContent = 'Fundo';
+    b.onclick = () => { escuro = !escuro; document.body.style.background = escuro ? '#111111' : '#ffffff'; };
+    $('#btns').append(b);
+}
 
-addEventListener('pointermove',e=>{
-    const n=performance.now(),v=Math.hypot(e.clientX-mx,e.clientY-my)/Math.max(1,n-pt);
-    
-    pt=n;
-    mx=e.clientX;
-    my=e.clientY;
-    
-    if(base!=='sono'){
-        lastAct=n;if(v>4&&!arrastando)set('surpreso',900)
+// ---------- Centro da aranha na tela ----------
+function centro() {
+    const r = svg.getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + r.height * 0.64, r.width];   // 0.64: onde fica o centro da cabeça no desenho
+}
+
+// ---------- Mouse ----------
+// No Electron, o movimento vem da TELA INTEIRA (via main.js); no navegador, da própria página.
+function moveuMouse(x, y, sx, sy) {
+    const n = performance.now();
+    const v = Math.hypot(x - mx, y - my) / Math.max(1, n - pt);
+    pt = n; mx = x; my = y;
+
+    // Quem andou: o MOUSE ou só a janela? Só o mouse conta como atividade.
+    const real = sx === undefined || sx !== ultSx || sy !== ultSy;
+    ultSx = sx; ultSy = sy;
+
+    // Arraste (só no Electron): se o botão está apertado e o mouse andou, vira arraste
+    if (press && window.arachne && sx !== undefined) {
+        if (!arrastando && Math.hypot(sx - pressSx, sy - pressSy) > 4) {
+            arrastando = true;
+            pressSx = sx; pressSy = sy;            // a conta do arraste começa daqui (sem "pulo")
+            window.arachne.comecarArraste();
+        }
+        if (arrastando) window.arachne.arrastar(sx - pressSx, sy - pressSy);
     }
-});
 
-s.addEventListener('pointerenter',()=>act(true));
-
-s.addEventListener('pointermove',e=>{
-    if(base==='sono'||press)return;
-
-    pet+=Math.abs(e.movementX)+Math.abs(e.movementY);
-    
-    if(pet>400){
-        pet=0;set('feliz',2500)
-    }
-});
-
-// ===== Clique x arraste =====
-// Ao apertar o botão ainda não sabemos o que a pessoa quer. Só ao ver se o mouse andou.
-let press=false,arrastando=false,sx=0,sy=0;
-
-s.addEventListener('pointerdown',e=>{
-    press=true;arrastando=false;
-    sx=e.screenX;sy=e.screenY;          // posição do mouse na TELA (não muda quando a janela se move)
-    s.setPointerCapture(e.pointerId);   // continua recebendo o mouse mesmo que ele saia da janela
-    act(true)
-});
-
-// Movimento do mouse: no Electron vem da TELA INTEIRA (via main.js); no navegador, da própria página
-let ultSx=NaN,ultSy=NaN;
-function moveuMouse(x,y,sx,sy){
-    const n=performance.now(),v=Math.hypot(x-mx,y-my)/Math.max(1,n-pt);
-    pt=n;mx=x;my=y;
-
-    // Quem andou: o MOUSE ou só a janela (quando a aranha caminha)? Só o mouse conta como atividade.
-    const real=sx===undefined||sx!==ultSx||sy!==ultSy;
-    ultSx=sx;ultSy=sy;
-
-    if(base!=='sono'){
-        if(real)lastAct=n;
+    if (base !== 'sono') {
+        if (real) lastAct = n;
 
         // Susto só se o movimento brusco for PERTO da aranha
-        const r=s.getBoundingClientRect();
-        const perto=Math.hypot(x-(r.left+r.width/2),y-(r.top+r.height/2))<r.width*.9;
-        if(real&&v>4&&perto&&!arrastando)set('surpreso',900)
+        const [cx, cy, larg] = centro();
+        const perto = Math.hypot(x - cx, y - cy) < larg * 0.9;
+        if (real && v > 4 && perto && !arrastando && n > calmaAte) {
+            set('surpreso', 900);
+            calmaAte = n + 2500;      // 2,5 s de calma antes do próximo susto
+        }
     }
 }
 
-if(window.arachne)window.arachne.aoMoverMouse(moveuMouse);
-else addEventListener('pointermove',e=>moveuMouse(e.clientX,e.clientY));
+if (window.arachne) window.arachne.aoMoverMouse(moveuMouse);
+else addEventListener('pointermove', e => moveuMouse(e.clientX, e.clientY));
 
-s.addEventListener('pointerup',()=>{
-    if(!press)return;
-    press=false;
-    if(arrastando){arrastando=false;return}   // foi arraste, então não conta como clique
+svg.addEventListener('pointerenter', () => act(true));
 
-    const n=performance.now();                // foi clique
-    clk=clk.filter(t=>n-t<2500);
-    clk.push(n);
-    if(y>=-1){vy=-500;qs=-.12}                // só pula se estiver no chão
-    set(clk.length>=5?'bravo':'feliz',2500)
+// Carinho: passar o mouse por cima, de um lado a outro
+svg.addEventListener('pointermove', e => {
+    if (base === 'sono' || press || emo === 'surpreso') return;
+    const mov = Math.abs(e.movementX) + Math.abs(e.movementY);
+    if (mov > 50) return;                  // movimento brusco não é carinho
+    pet += mov;
+    if (pet > 400) { pet = 0; set('feliz', 2500); }
 });
 
-s.addEventListener('pointercancel',()=>{press=false;arrastando=false});
+// Clique x arraste: ao apertar ainda não sabemos o que a pessoa quer. Só ao ver se o mouse andou.
+svg.addEventListener('pointerdown', e => {
+    press = true;
+    arrastando = false;
+    pressSx = isNaN(ultSx) ? e.screenX : ultSx;    // posição na TELA (não muda quando a janela se move)
+    pressSy = isNaN(ultSy) ? e.screenY : ultSy;
+    svg.setPointerCapture(e.pointerId);            // continua recebendo o mouse mesmo que ele saia da janela
+    act(true);
+});
 
-addEventListener('keydown',()=>act(true));
+svg.addEventListener('pointerup', () => {
+    if (!press) return;
+    press = false;
+    if (arrastando) { arrastando = false; return; }   // foi arraste, então não conta como clique
 
-// Olhos secundários piscando aleatoriamente (do seu teste)
-(function flick(){
-    if(emo!=='sono')fl[[0,1,4,5][Math.random()*4|0]]=1;
-    setTimeout(flick,1000+Math.random()*2500)
+    const n = performance.now();                      // foi clique
+    clk = clk.filter(t => n - t < 2500);
+    clk.push(n);
+    if (by >= -1) { bv = -360; qs = -0.12; }          // só pula se estiver no chão
+    set(clk.length >= 5 ? 'bravo' : 'feliz', 2500);   // 5 cliques seguidos: fica brava
+});
+
+svg.addEventListener('pointercancel', () => { press = false; arrastando = false; });
+addEventListener('keydown', () => act(true));
+
+// Olhos secundários piscando aleatoriamente
+(function flick() {
+    if (emo !== 'sono') fl[[2, 3, 4, 5, 6, 7][Math.random() * 6 | 0]] = 1;
+    setTimeout(flick, 1000 + Math.random() * 2500);
 })();
 
-function frame(n){
-    const dt=Math.min(.05,(n-last)/1000);
-    last=n;
-    const t=n/1000;
+// ---------- O laço principal ----------
+function frame(n) {
+    const dt = Math.min(0.05, (n - last) / 1000);
+    last = n;
+    const t = n / 1000;
 
-    for(const k in cur)cur[k]+=(tgt[k]-cur[k])*Math.min(1,dt*6);
+    // 1. suaviza todos os valores em direção à emoção desejada
+    for (const k in cur) cur[k] += (tgt[k] - cur[k]) * Math.min(1, dt * 6);
 
-    if(base!=='sono'&&n-lastAct>20000){
-        base='sono';
-        set('sono')
+    // 2. 20 segundos sem atividade: dorme
+    if (base !== 'sono' && n - lastAct > 20000) { base = 'sono'; set('sono'); }
+
+    // 3. carinho esfria, piscadas
+    pet = Math.max(0, pet - 300 * dt);
+    nextBlink -= dt * 1000;
+    if (nextBlink < 0) { blink = 1; nextBlink = 2000 + Math.random() * 3500; }
+    blink = Math.max(0, blink - dt * 8);
+    for (let i = 0; i < fl.length; i++) fl[i] = Math.max(0, fl[i] - dt * 6);
+
+    // 4. olhar: segue o cursor; parada há 4s, olha ao redor sozinha
+    const [cx, cy] = centro();
+    let ax = mx - cx, ay = my - cy;
+    if (base !== 'sono' && n - lastAct > 4000) {
+        if (n > gt) {
+            gt = n + 1500 + Math.random() * 2000;
+            wx = Math.random() * 400 - 200;
+            wy = Math.random() * 240 - 120;
+        }
+        ax = wx; ay = wy;
     }
+    const d = Math.hypot(ax, ay) || 1;
+    const m = Math.min(1, d / 200) * cur.lk;          // cur.lk: cada emoção segue o mouse num grau (sono = 0)
+    const f = Math.min(1, dt * 10);
+    lx += (ax / d * m - lx) * f;
+    ly += (ay / d * m - ly) * f;
+    const lyv = ly + cur.gb;                          // triste olha um pouco para baixo
 
-    pet=Math.max(0,pet-300*dt);
-    nb-=dt*1000;
+    // 5. física: pulo + mola de amassar/esticar
+    bv += 2600 * dt;
+    by += bv * dt;
+    if (by < -40) { by = -40; bv = Math.max(bv, 0); }   // teto: nunca sobe mais que isso
+    if (by > 0) { if (bv > 150) qs = 0.15; by = 0; bv = 0; }   // pousou: amassadinha
+    qv += (-220 * qs - 14 * qv) * dt;
+    qs += qv * dt;
 
-    if(nb<0){
-        blink=1;
-        nb=2000+Math.random()*3500
-    }
+    // 6. respiração e quicar (a fase avança; mudar a velocidade não dá tranco)
+    breathPhase += dt * 2 * cur.bs;
+    hopPhase += dt * 3 * cur.bs;
+    const breath = Math.sin(breathPhase) * cur.ba;
+    const hop = Math.abs(Math.sin(hopPhase)) * cur.hop;
+    const shx = (Math.random() - 0.5) * cur.sh * 2;
+    const shy = (Math.random() - 0.5) * cur.sh * 2;
 
-    blink=Math.max(0,blink-dt*8);
-
-    for(let i=0;i<6;i++)fl[i]=Math.max(0,fl[i]-dt*6);
-
-    // olhar: segue o cursor; parado, olha ao redor sozinha
-    const r=s.getBoundingClientRect();
-    let ax=mx-(r.left+r.width/2),ay=my-(r.top+r.height*.45);
-
-    if(base!=='sono'&&n-lastAct>4000){
-        if(n>gt){
-            gt=n+1500+Math.random()*2000;
-            wx=Math.random()*400-200;
-            wy=Math.random()*240-120
-        } ax=wx;ay=wy
-    }
-
-    const d=Math.hypot(ax,ay)||1,m=Math.min(1,d/200)*cur.look,f=Math.min(1,dt*10);
-
-    ux+=(ax/d*m-ux)*f;
-    uy+=(ay/d*m-uy)*f;
-    const gx=ux+Math.sin(t*19)*cur.jit,gy=uy+cur.gb+Math.sin(t*23+1)*cur.jit*.5;
-
-    // física: pulo + mola de amassar/esticar
-    vy+=2600*dt;y+=vy*dt;if(y>0){if(vy>150)qs=.15;y=0;vy=0}
-    qv+=(-220*qs-14*qv)*dt;qs+=qv*dt;
-
-    const br=Math.sin(t*2*cur.spd)*.015*cur.amp,hop=Math.abs(Math.sin(t*cur.spd*3))*cur.hop,shx=(Math.random()-.5)*cur.sh*2;
-
-    root.setAttribute('transform',`translate(${shx} ${y-hop+cur.dy}) rotate(${cur.rot} 200 190) translate(200 190) scale(${cur.sc*(1+qs+br)} ${cur.sc*(1-qs-br)}) translate(-200 -190)`);
-    s.style.setProperty('--g',`hsl(${cur.h} 100% ${cur.l}%)`);gb.setAttribute('stdDeviation',cur.gs*.6);
-
-    // olhos
-    const c=Math.max(cur.lt,blink),closed=Math.min(1,Math.max(0,(c-.85)/.15));
-    EY.forEach(([x,yy,rr],i)=>{const dd=x<0?-1:1,fc=rr>20?1:rr>10?.6:.3;
-        EL[i].setAttribute('transform',`translate(${x+gx*7*fc} ${yy+gy*5*fc}) scale(${cur.sz*(1+dd*cur.asy)})`);
-        EL[i].setAttribute('opacity',1-fl[i]*.9);
-        LT[i].setAttribute('height',rr*(1+2*c));
-        LB[i].setAttribute('y',rr*(1-2*cur.lb));LB[i].setAttribute('height',2*rr*(1+cur.lb));
-        LG[i].setAttribute('transform',`rotate(${-dd*cur.tk})`);
-        CL[i].setAttribute('opacity',closed)}); // olho fechado vira um traço luminoso
-    PU.forEach(p=>p.setAttribute('transform',`translate(${gx*8} ${gy*8}) scale(${cur.ps})`));
-
-    // sobrancelhas (inclinação separa triste, medo, surpresa e bravo)
-    for(let k=0;k<4;k++){const i=k+1,rr=EY[i][2],dd=EY[i][0]<0?-1:1;
-        BG[k].setAttribute('transform',`translate(0 ${-rr-6-cur.bh}) rotate(${-dd*cur.bk})`);
-        BR[k].setAttribute('d',`M${-rr*.9} 0Q0 ${-cur.bc*2} ${rr*.9} 0`);BR[k].setAttribute('opacity',cur.bo)
-    }
-
-    // presas
-    FA.forEach((g,i)=>{
-        const dd=i?1:-1;
-        g.setAttribute('transform',`translate(${200+dd*22} 238) rotate(${dd*(cur.fa+Math.sin(t*34+i)*cur.fj)})`)
+    // 7. desenha
+    desenharAranha({
+        dt, t, lx, ly: lyv, blink, fl,
+        btx: shx + lx * 5,                              // o peso se desloca para onde ela olha
+        bty: by - hop + cur.dy + shy + lyv * 2,
+        brot: cur.rot + lx * 1.5,
+        bsx: cur.sc * (1 + breath + qs),
+        bsy: cur.sc * (1 - breath - qs)
     });
 
-    // lágrima (triste), suor (medo), exclamação (surpresa), zzz (sono)
-    
-    const p1=(t*.5)%1,p2=(t*1.3)%1;
-    tear.setAttribute('transform',`translate(158 ${204+p1*70})`);
-    tear.setAttribute('opacity',cur.tr*Math.sin(Math.PI*p1));
-    sweat.setAttribute('transform',`translate(332 ${120+p2*40})`);
-    sweat.setAttribute('opacity',cur.sw*Math.sin(Math.PI*p2));
-    ex.setAttribute('opacity',cur.ex);zg.setAttribute('opacity',cur.z);
     requestAnimationFrame(frame);
 }
-set('normal');requestAnimationFrame(frame);
+
+set('normal');
+requestAnimationFrame(frame);
