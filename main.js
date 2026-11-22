@@ -4,8 +4,8 @@ const path = require('path');
 
 // ---------- Tamanho do pet ----------
 const ESCALA = 0.42;                        // fator de redução da aranha
-const LARGURA = Math.round(600 * ESCALA);   // largura da janela (px)
-const ALTURA = Math.round(395 * ESCALA);    // altura da janela (px)
+const LARGURA = Math.round(500 * ESCALA);   // largura da janela (px)
+const ALTURA = Math.round(295 * ESCALA);    // altura da janela (px)
 
 let janela;                // a janela do pet
 let posInicial = [0, 0];   // posição da janela ao começar a arrastar [x, y]
