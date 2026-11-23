@@ -115,7 +115,7 @@ function moveuMouse(x, y, sx, sy) {
         // Susto só se o movimento brusco for PERTO da aranha
         const [cx, cy, larg] = centro();
         const perto = Math.hypot(x - cx, y - cy) < larg * 0.6;
-        if (real && v > 4 && perto && !arrastando && n > calmaAte && emo !== 'medo') {
+        if (real && v > 4 && perto && Math.hypot(x - cx, y - cy) < Math.hypot(ox - cx, oy - cy) && !arrastando && n > calmaAte && emo !== 'medo') {
             sustos = sustos.filter(s => n - s < 8000);
             sustos.push(n);
             if (sustos.length >= 3) set('medo', 3500);
