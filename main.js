@@ -31,6 +31,7 @@ function criarJanela() {
     });
 
     janela.setIgnoreMouseEvents(true);   // começa "fantasma"; o corpo.js a torna sólida sobre a aranha
+    janela.setAlwaysOnTop(true, 'screen-saver');   // nível acima da barra de tarefas (no Windows, "floating" fica abaixo dela)
 
     janela.loadFile(path.join(__dirname, 'prototype', 'index.html'), {
         query: { modo: 'desktop' }       // vira index.html?modo=desktop
@@ -83,8 +84,8 @@ ipcMain.on('arraste-mover', (evento, dx, dy) => {
 // A página pergunta: onde a janela está e qual é a área útil da tela?
 ipcMain.handle('estado', () => {
     const [x, y] = janela.getPosition();
-    const area = screen.getDisplayMatching(janela.getBounds()).workArea;
-    return { x, y, area, largura: LARGURA, altura: ALTURA };
+    const tela = screen.getDisplayMatching(janela.getBounds());
+    return { x, y, area: tela.workArea, bounds: tela.bounds, largura: LARGURA, altura: ALTURA };
 });
 
 // A página pede para mover a janela (andar e cair)

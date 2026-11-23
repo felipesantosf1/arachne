@@ -4,8 +4,8 @@ const GRAV = 1800;               // gravidade da janela (px/s²)
 
 // ---------- Barra de tarefas que se esconde ----------
 const ALTURA_BARRA = 40;         // Windows 10: 40. Windows 11: 48. Ajuste olhando a sua barra.
-const BARRA_ESPERA = 250;        // ms com o mouse colado na borda de baixo até a barra aparecer
-const BARRA_SOME = 700;          // ms com o mouse longe da barra até ela sumir
+const BARRA_ESPERA = 150;        // ms com o mouse colado na borda de baixo até a barra aparecer
+const BARRA_SOME = 370;          // ms com o mouse longe da barra até ela sumir
 const FOLGA_PES = 8 / 220;       // o desenho termina 8 unidades (de 220) abaixo dos pés: o chão é a base dos PÉS  
 
 let px = 0, py = 0, wvy = 0, area = null, bounds = null, dimJ = { l: 0, a: 0 }, pronto = false, vx = 0, uX = NaN, uY = NaN;
@@ -14,6 +14,7 @@ const modo = { dir: 0, ate: 0 }; // dir: -1 esquerda, 0 parada, 1 direita
 let hover = false, interativo = false, estavaArrastando = false;
 
 let barraVisivel = false;        // a barra de tarefas está aparecendo? (estimado pela posição do mouse)
+let barraAnim = 0, chaoPrev = NaN;   // 0 = barra escondida, 1 = visível (deslizando de um para o outro)
 let subir = false;               // a barra acabou de aparecer: é hora de pular
 let encostouEm = 0, afastouEm = 0, mouseSy = NaN;
 
@@ -27,7 +28,7 @@ if (window.arachne) window.arachne.estado().then(sincronizar);
 
 function chaoAtual() {
     const folga = dimJ.a * FOLGA_PES;
-    return area.y + area.height - dimJ.a + folga - (barraVisivel ? ALTURA_BARRA : 0);
+    return area.y + area.height - dimJ.a + folga - ALTURA_BARRA * barraAnim;
 }
 
 // Adivinha se a barra de tarefas está aparecendo.
@@ -46,13 +47,13 @@ function atualizarBarra(n) {
         if (!naBorda) encostouEm = 0;
         else {
             if (!encostouEm) encostouEm = n;
-            if (n - encostouEm > BARRA_ESPERA) { barraVisivel = true; subir = true; afastouEm = 0; }
+            if (n - encostouEm > BARRA_ESPERA) { barraVisivel = true; subir = true; afastouEm = 0; qs = 0.06; equiV = (Math.random() < 0.5 ? -1 : 1) * 85; }
         }
     } else {
         if (sobreBarra) afastouEm = 0;
         else {
             if (!afastouEm) afastouEm = n;
-            if (n - afastouEm > BARRA_SOME) { barraVisivel = false; encostouEm = 0; }
+            if (n - afastouEm > BARRA_SOME) { barraVisivel = false; encostouEm = 0; qs = -0.05; equiV = (Math.random() < 0.5 ? -1 : 1) * 55; }
         }
     }
 }
@@ -65,6 +66,8 @@ function loopCorpo(n) {
 
     if (pronto) atualizarBarra(n);
 
+    barraAnim += ((barraVisivel ? 1 : 0) - barraAnim) * Math.min(1, dt * 18);   // desliza em ~0,2 s, como a barra
+
     if (pronto && (arrastando || press)) {          // o mouse está segurando: a janela é dele
         vx = 0; modo.ate = n + 1500;
         if (arrastando) estavaArrastando = true;
@@ -73,6 +76,9 @@ function loopCorpo(n) {
         window.arachne.estado().then(sincronizar);
     } else if (pronto) {
         const chao = chaoAtual(), minX = area.x, maxX = area.x + area.width - dimJ.l;
+        // o chão (a barra) está deslizando: se ela estava em pé nele, vai junto, sem pulo nem queda
+        if (!noAr && Math.abs(py - chaoPrev) < 1.5) py = chao;
+        chaoPrev = chao;
 
         // A barra acabou de aparecer e ela estava no chão antigo: pula para cima dela.
         // Energia: para subir uma altura h, a velocidade inicial é v = raiz(2·g·h). Somamos 10 px de folga.

@@ -29,6 +29,7 @@ let lento = 0, faseLento = 0, proxLento = 2;
 let afago = 0, mexS = 0, mxh = 0, myh = 0;     // cabeça no carinho (gato)
 let pend = 0, pendV = 0, car = 0;            // balanço de pêndulo (radianos) e "quanto está carregada" (0 a 1)
 let vxS = 0, vxAnt = 0, axS = 0, sxAnt = NaN;   // velocidade e aceleração da janela no arraste
+let equi = 0, equiV = 0;                 // desequilíbrio: ângulo (graus) e velocidade
 const fl = new Array(EYES.length).fill(0);    // "tremida de luz" dos olhos secundários
 
 // ---------- Interação ----------
@@ -258,6 +259,10 @@ function frame(n) {
     const W0 = 9, Z = arrastando ? 0.22 : 0.5;                              // frequência e amortecimento
     pendV += (W0 * W0 * (alvoP - pend) - 2 * Z * W0 * pendV) * dt;
     pend += pendV * dt;
+    
+    // 5c. desequilíbrio: mola de rotação que balança e se firma (frequência 14, amortecimento 0,18)
+    equiV += (-196 * equi - 2 * 0.18 * 14 * equiV) * dt;
+    equi += equiV * dt;
 
     // 6. respiração e quicar (a fase avança; mudar a velocidade não dá tranco)
     breathPhase += dt * 2 * cur.bs;
@@ -272,7 +277,7 @@ function frame(n) {
         dt, t, lx, ly: lyv, blink: Math.max(blink, lento), fl, cabX, cabY, cabR, cabS, pend: pend * 57.3, car,
         btx: shx + lx * 5,                              // o peso se desloca para onde ela olha
         bty: by - hop + cur.dy + shy + lyv * 2,
-        brot: cur.rot + lx * 1.5 + Math.sin(t * 2.2) * cur.bal,
+        brot: cur.rot + lx * 1.5 + Math.sin(t * 2.2) * cur.bal + equi,
         bsx: cur.sc * (1 + breath + qs),
         bsy: cur.sc * (1 - breath - qs)
     });
