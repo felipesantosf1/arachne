@@ -26,6 +26,8 @@ let last = performance.now(), lastAct = last;
 let blink = 0, nextBlink = 2000;
 let lento = 0, faseLento = 0, proxLento = 2;
 let afago = 0, mexS = 0, mxh = 0, myh = 0;     // cabeça no carinho (gato)
+let pend = 0, pendV = 0, car = 0;            // balanço de pêndulo (radianos) e "quanto está carregada" (0 a 1)
+let vxS = 0, vxAnt = 0, axS = 0, sxAnt = NaN;   // velocidade e aceleração da janela no arraste
 const fl = new Array(EYES.length).fill(0);    // "tremida de luz" dos olhos secundários
 
 // ---------- Interação ----------
@@ -98,6 +100,7 @@ function moveuMouse(x, y, sx, sy) {
     if (press && window.arachne && sx !== undefined) {
         if (!arrastando && Math.hypot(sx - pressSx, sy - pressSy) > 4) {
             arrastando = true;
+            set('carregada');
             pressSx = sx; pressSy = sy;            // a conta do arraste começa daqui (sem "pulo")
             window.arachne.comecarArraste();
         }
@@ -142,7 +145,7 @@ svg.addEventListener('pointerdown', e => {
 svg.addEventListener('pointerup', () => {
     if (!press) return;
     press = false;
-    if (arrastando) { arrastando = false; return; }   // foi arraste, então não conta como clique
+    if (arrastando) { arrastando = false; set(base); return; }   // foi arraste, então não conta como clique
 
     const n = performance.now();                      // foi clique
     clk = clk.filter(t => n - t < 2500);
@@ -151,7 +154,7 @@ svg.addEventListener('pointerup', () => {
     set(clk.length >= 5 ? 'bravo' : 'feliz', 2500);   // 5 cliques seguidos: fica brava
 });
 
-svg.addEventListener('pointercancel', () => { press = false; arrastando = false; });
+svg.addEventListener('pointercancel', () => { if (arrastando) set(base); press = false; arrastando = false; });
 addEventListener('keydown', () => act(true));
 
 // Olhos secundários piscando aleatoriamente
@@ -234,6 +237,23 @@ function frame(n) {
     qv += (-220 * qs - 14 * qv) * dt;
     qs += qv * dt;
 
+    // 5b. carregada: pêndulo preso no ponto onde ela é segurada
+    car += ((emo === 'carregada' ? 1 : 0) - car) * Math.min(1, dt * 8);
+    let acel = 0;
+    if (arrastando && !isNaN(ultSx)) {
+        if (!isNaN(sxAnt)) {
+            vxS += ((ultSx - sxAnt) / Math.max(dt, 0.001) - vxS) * Math.min(1, dt * 15);   // velocidade (px/s)
+            axS += ((vxS - vxAnt) / Math.max(dt, 0.001) - axS) * Math.min(1, dt * 10);     // aceleração (px/s²)
+            vxAnt = vxS;
+        }
+        sxAnt = ultSx;
+        acel = axS;
+    } else { sxAnt = NaN; vxS = 0; vxAnt = 0; axS = 0; }
+    const alvoP = Math.max(-0.5, Math.min(0.5, Math.atan(acel / GRAV)));   // ângulo de equilíbrio (máx. ~29°)
+    const W0 = 9, Z = arrastando ? 0.22 : 0.5;                              // frequência e amortecimento
+    pendV += (W0 * W0 * (alvoP - pend) - 2 * Z * W0 * pendV) * dt;
+    pend += pendV * dt;
+
     // 6. respiração e quicar (a fase avança; mudar a velocidade não dá tranco)
     breathPhase += dt * 2 * cur.bs;
     hopPhase += dt * 3 * cur.bs;
@@ -244,7 +264,7 @@ function frame(n) {
 
     // 7. desenha
     desenharAranha({
-        dt, t, lx, ly: lyv, blink: Math.max(blink, lento), fl, cabX, cabY, cabR, cabS,
+        dt, t, lx, ly: lyv, blink: Math.max(blink, lento), fl, cabX, cabY, cabR, cabS, pend: pend * 57.3, car,
         btx: shx + lx * 5,                              // o peso se desloca para onde ela olha
         bty: by - hop + cur.dy + shy + lyv * 2,
         brot: cur.rot + lx * 1.5 + Math.sin(t * 2.2) * cur.bal,

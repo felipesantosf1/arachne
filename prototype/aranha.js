@@ -279,11 +279,13 @@ face.appendChild(sweat);
 // ============================================================
 // PÉS PLANTADOS E PASSOS
 // ============================================================
-const STEP_TIME = 0.22;   // duração de um passo (segundos)
-const STEP_LIFT = 6;      // altura que o pé sobe durante o passo
-const STEP_MIN = 12;      // diferença mínima para dar passo (em trocas de emoção comuns)
-                          // TESTE: coloque 9999 para desligar os passos de emoção
-const STEP_GAP = 0.15;    // intervalo entre o início de um passo e o próximo
+const STEP_TIME = 0.22;                 // duração de um passo (segundos)
+const STEP_LIFT = 6;                    // altura que o pé sobe durante o passo
+const STEP_MIN = 12;                    // diferença mínima para dar passo (em trocas de emoção comuns)
+
+const STEP_GAP = 0.15;                  // intervalo entre o início de um passo e o próximo
+const PIVO_PEGA = -40;                  // ponto onde ela é segurada (acima da cabeça)
+const fh = new Array(8).fill(0);        // ângulo "atrasado" de cada perna (balanço das pernas)
 
 // Estado de cada pé: posição atual (x, y) NO CHÃO, e o passo em andamento
 const feet = legObjs.map((leg) => ({
@@ -321,12 +323,15 @@ function startStep(i, to) {
 
 // Converte um ponto do MUNDO (espaço da aranha) para o espaço LOCAL do corpo.
 // É a transformação do corpo ao contrário (desfaz translate, rotate e scale).
-function makeToLocal(ox, oy, rotDeg, sx, sy) {
+function makeToLocal(ox, oy, rotDeg, sx, sy, pend = 0) {
     const ca = Math.cos((-rotDeg * Math.PI) / 180);
     const sa = Math.sin((-rotDeg * Math.PI) / 180);
+    const cp = Math.cos((-pend * Math.PI) / 180);
+    const sp = Math.sin((-pend * Math.PI) / 180);
     return (p) => {
-        const x = p[0] - ox;
-        const y = p[1] - oy - 60;            // 60 = pivô do corpo
+        let x = p[0] - ox;
+        let y = p[1] - oy - PIVO_PEGA;                    // desfaz o balanço (giro em torno do ponto de pegar)
+        [x, y] = [x * cp - y * sp, x * sp + y * cp + PIVO_PEGA - 60];   // 60 = pivô do corpo
         const rx = x * ca - y * sa;
         const ry = x * sa + y * ca;
         return [rx / sx, ry / sy + 60];
@@ -345,19 +350,19 @@ let stepCooldown = 0;
 //   btx, bty     : deslocamento do corpo      brot : inclinação (graus)
 //   bsx, bsy     : escala do corpo (respiração, amassar)
 // ============================================================
-function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, cabX = 0, cabY = 0, cabR = 0, cabS = 1 }) {
+function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, cabX = 0, cabY = 0, cabR = 0, cabS = 1, pend = 0, car = 0 }) {
     // 1. cor da emoção
     svg.style.setProperty('--g', `hsl(${cur.h} 100% ${cur.l}%)`);
 
     // 1b. sombra do corpo no chão: diminui quando o corpo sobe e alarga quando ele está baixo
     const lift = Math.max(0, -bty);
     shadow.setAttribute('transform', `scale(${Math.max(0.5, 1 - lift * 0.012) + Math.max(0, cur.dy) * 0.006} 1)`);
-    shadow.setAttribute('opacity', Math.max(0.35, 1 - lift * 0.03));
+    shadow.setAttribute('opacity', Math.max(0.35, 1 - lift * 0.03) * (1 - car));
 
     // 2. corpo (pivô em (0, 60): perto dos pés, assim ele gira e amassa "apoiado no chão")
     bodyG.setAttribute('transform',
-        `translate(${btx} ${bty}) translate(0 60) rotate(${brot}) ` +
-        `scale(${bsx} ${bsy}) translate(0 -60)`);
+        `translate(${btx} ${bty - 35 * car}) translate(0 ${PIVO_PEGA}) rotate(${pend}) translate(0 ${-PIVO_PEGA}) ` +
+        `translate(0 60) rotate(${brot}) scale(${bsx} ${bsy}) translate(0 -60)`);
 
     // 3. efeitos: lágrima, suor, exclamação, "z Z"
     const p1 = (t * 0.5) % 1;
@@ -398,7 +403,7 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
     }
 
     // 4c. anda os passos em andamento, resolve a IK e redesenha cada perna
-    const toLocal = makeToLocal(btx, bty, brot, bsx, bsy);
+    const toLocal = makeToLocal(btx, bty - 35 * car, brot, bsx, bsy, pend);
 
     legObjs.forEach((leg, i) => {
         const ft = feet[i];
@@ -421,8 +426,18 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
         const A = [F[0] - leg.tars[0], F[1] - leg.tars[1]];   // tornozelo = pé - tarso (fixo)
 
         // leva para o espaço do corpo e resolve a IK lá
-        const Fl = toLocal(F);
-        const Al = toLocal(A);
+        let Fl = toLocal(F);
+        let Al = toLocal(A);
+        if (car > 0.001) {                                      // carregada: pés pendurados, não plantados
+            const k = i % 4;
+            fh[i] += (pend - fh[i]) * Math.min(1, dt * (12 - k * 2));   // cada perna atrasa um pouco diferente
+            const amp = 1 + (3 - k) * 0.35;                    // as patas da frente tateiam mais que as de trás
+            const Hx = leg.rest[0] * 0.85 + (pend - fh[i]) * 1.2 + Math.sin(t * 2.2 + i * 1.3) * 7 * amp;
+            const Hy = leg.rest[1] * 0.9 + 12 + Math.cos(t * 1.7 + i * 0.9) * 8 * amp;                                                                   // caem bem abaixo do corpo
+            const Ha = [Hx - leg.tars[0], Hy - leg.tars[1]];
+            Fl = [Fl[0] + (Hx - Fl[0]) * car, Fl[1] + (Hy - Fl[1]) * car];
+            Al = [Al[0] + (Ha[0] - Al[0]) * car, Al[1] + (Ha[1] - Al[1]) * car];
+        } else fh[i] = pend;
         const ik = solveIK(leg.root, Al, leg.l1, leg.l2, leg.s);
 
         // se a perna esticou ao máximo, a ponta acompanha o tornozelo (o pé "descola")
@@ -433,7 +448,7 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
         // sombrinha de contato: some um pouco quando o pé sobe
         contacts[i].setAttribute('cx', F[0]);
         contacts[i].setAttribute('cy', ft.y + 1);
-        contacts[i].setAttribute('opacity', Math.max(0.1, 0.55 - ft.lift * 0.06));
+        contacts[i].setAttribute('opacity', Math.max(0.1, 0.55 - ft.lift * 0.06) * (1 - car));
     });
 
     // 5. perspectiva: cada camada anda uma quantidade diferente
