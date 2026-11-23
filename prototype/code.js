@@ -90,6 +90,7 @@ function moveuMouse(x, y, sx, sy) {
     const n = performance.now();
     const dist = Math.hypot(x - mx, y - my);
     const v = dist / Math.max(1, n - pt);
+    const ox = mx, oy = my;
     pt = n; mx = x; my = y;
 
     // Quem andou: o MOUSE ou só a janela? Só o mouse conta como atividade.
@@ -112,8 +113,8 @@ function moveuMouse(x, y, sx, sy) {
 
         // Susto só se o movimento brusco for PERTO da aranha
         const [cx, cy, larg] = centro();
-        const perto = Math.hypot(x - cx, y - cy) < larg * 0.9;
-        if (real && v > 4 && perto && !arrastando && n > calmaAte) {
+        const perto = Math.hypot(x - cx, y - cy) < larg * 0.6;
+            if (real && v > 4 && perto && Math.hypot(x - cx, y - cy) < Math.hypot(ox - cx, oy - cy) && !arrastando && n > calmaAte) {
             set('surpreso', 900);
             calmaAte = n + 2500;      // 2,5 s de calma antes do próximo susto
         }
