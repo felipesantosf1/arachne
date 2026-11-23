@@ -92,6 +92,7 @@ function loopCorpo(n) {
             py += wvy * dt;
             if (wvy > 0 && py >= chao) {            // descendo e tocou o chão: pousou
                 if (wvy > 300) qs = 0.15;           // amassadinha
+                if (wvy > 1000) set('medo', 2500);   // caiu de bem alto (~280 px): fica com medo
                 py = chao; wvy = 0; noAr = false;
             }
             vx = 0;

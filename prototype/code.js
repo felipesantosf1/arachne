@@ -10,6 +10,7 @@ let timer;
 let rapidez = 5;                  // 5 = emoção "surge" devagar; ≥20 = instantâneo (surpresa)
 const cv = {};                    // velocidade de cada valor (mola)
 let settleUntil = 0;              // até quando os pés se ajeitam por inteiro (dormir/acordar)
+let sustos = [];                  // Numero de sustos tomados
 
 // ---------- Estado do corpo ----------
 let by = 0, bv = 0;               // pulo: altura (negativo = no ar) e velocidade
@@ -114,8 +115,11 @@ function moveuMouse(x, y, sx, sy) {
         // Susto só se o movimento brusco for PERTO da aranha
         const [cx, cy, larg] = centro();
         const perto = Math.hypot(x - cx, y - cy) < larg * 0.6;
-            if (real && v > 4 && perto && Math.hypot(x - cx, y - cy) < Math.hypot(ox - cx, oy - cy) && !arrastando && n > calmaAte) {
-            set('surpreso', 900);
+        if (real && v > 4 && perto && !arrastando && n > calmaAte && emo !== 'medo') {
+            sustos = sustos.filter(s => n - s < 8000);
+            sustos.push(n);
+            if (sustos.length >= 3) set('medo', 3500);
+            else set('surpreso', 900);
             calmaAte = n + 2500;      // 2,5 s de calma antes do próximo susto
         }
 
