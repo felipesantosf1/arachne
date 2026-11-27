@@ -216,8 +216,8 @@ const LID = '#0e0e12';   // cor da pálpebra = cor da cabeça
 
 // Quanto cada camada se move (x, y). Ajuste aqui para sentir a perspectiva.
 const PARALAXE = {
-    head: [3, 2],     // cabeça: pouco
-    face: [4, 3],     // olhos e presas: um pouco mais (camada da frente)
+    head: [6, 2],     // cabeça: pouco
+    face: [10, 3],     // olhos e presas: um pouco mais (camada da frente)
     abd: [16, 10]     // abdômen: vai no sentido OPOSTO (camada de trás)
 };
 
@@ -285,6 +285,9 @@ const STEP_MIN = 12;                    // diferença mínima para dar passo (em
 
 const STEP_GAP = 0.15;                  // intervalo entre o início de um passo e o próximo
 const PIVO_PEGA = -40;                  // ponto onde ela é segurada (acima da cabeça)
+const WALK_LEAD = 10;                   // quanto o pé pousa À FRENTE do descanso ao andar (unid. SVG)
+const WALK_GAP = 0.05;                  // intervalo entre passos ao andar (s); mais curto que STEP_GAP
+let andouPx = 0;                        // quanto a janela andou desde o último quadro (px); o corpo.js soma aqui
 const fh = new Array(8).fill(0);        // ângulo "atrasado" de cada perna (balanço das pernas)
 
 // Estado de cada pé: posição atual (x, y) NO CHÃO, e o passo em andamento
@@ -302,8 +305,8 @@ const contacts = legObjs.map(() => {
     return c;
 });
 
-// Onde o pé i DEVERIA estar (depende da postura da emoção)
-const desired = (i) => [legObjs[i].rest[0] * tgt.lgx, legObjs[i].rest[1] * tgt.lgy];
+// Onde o pé i DEVERIA estar (postura da emoção). lead: adianta o pé ao andar
+const desired = (i, lead = 0) => [legObjs[i].rest[0] * tgt.lgx + lead, legObjs[i].rest[1] * tgt.lgy];
 
 // Uma perna só dá passo se a vizinha e a do lado oposto estiverem paradas
 function canStep(i) {
@@ -375,6 +378,15 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
     zzz.setAttribute('opacity', cur.zz);
 
     // 4. PERNAS
+    // 4-. pés parados no MUNDO: desconta o quanto a janela andou
+    const r = svg.getBoundingClientRect();
+    const dxSvg = andouPx / Math.min(r.width / 360, r.height / 220);   // px da janela -> unidades do SVG
+    andouPx = 0;
+    feet.forEach((ft) => { ft.x -= dxSvg; ft.from[0] -= dxSvg; ft.to[0] -= dxSvg; });
+
+    const andando = Math.abs(vx) > 3;                       // vx vem do corpo.js (px/s)
+    const lead = andando ? Math.sign(vx) * WALK_LEAD : 0;   // pousa à frente, na direção do movimento
+    
     // 4a. decide quando um pé precisa dar um passo.
     //     Diferença pequena: o corpo se ajusta e a IK dobra os joelhos (sem passo).
     //     Dormindo/acordando (settleUntil): limite baixo, os pés se ajeitam por inteiro.
@@ -384,8 +396,8 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
         if (ft.t < 1 || stepCooldown > 0) return;
         const D = desired(i);
         if (Math.hypot(D[0] - ft.x, D[1] - ft.y) > minDist && canStep(i)) {
-            startStep(i, D);
-            stepCooldown = STEP_GAP;     // um passo de cada vez: parece intencional
+            startStep(i, desired(i, lead));                 // pousa à frente ao andar
+            stepCooldown = andando ? WALK_GAP : STEP_GAP;
         }
     });
 
@@ -393,7 +405,7 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
     nextIdle -= dt;
     if (nextIdle < 0) {
         nextIdle = 1.2 + Math.random() * 2.2;
-        if (emo !== 'sono') {
+        if (emo !== 'sono' && !andando) {
             const i = Math.floor(Math.random() * feet.length);
             if (feet[i].t >= 1 && canStep(i)) {
                 const D = desired(i);
@@ -453,7 +465,7 @@ function desenharAranha({ dt, t, lx, ly, blink, fl, btx, bty, brot, bsx, bsy, ca
 
     // 5. perspectiva: cada camada anda uma quantidade diferente
     head.setAttribute('transform', `translate(${lx * PARALAXE.head[0] + cabX} ${ly * PARALAXE.head[1] + cur.hd + cabY}) rotate(${cabR}) scale(${cabS})`);
-    face.setAttribute('transform', `translate(${lx * PARALAXE.face[0]} ${ly * PARALAXE.face[1]})`);
+    face.setAttribute('transform', `translate(${lx * PARALAXE.face[0]} ${ly * PARALAXE.face[1]}) scale(${1 - Math.abs(lx) * 0.1} 1)`);
     abd.setAttribute('transform', `translate(${-lx * PARALAXE.abd[0]} ${ABD_Y - ly * PARALAXE.abd[1]}) scale(${1 - ly * 0.05})`);
     abdMark.setAttribute('cx', -lx * 10);
     abdMark.setAttribute('cy', -ly * 8);

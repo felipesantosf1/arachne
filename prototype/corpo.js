@@ -1,5 +1,5 @@
-const VEL = 70;                  // velocidade de andar (px/s)
-const ANDAR_SOZINHA = false;     // andar pela tela fica DESLIGADO até a etapa de andar
+const VEL = 22;                  // velocidade de andar (px/s)
+const ANDAR_SOZINHA = true;      // andar pela tela fica DESLIGADO até a etapa de andar
 const GRAV = 1800;               // gravidade da janela (px/s²)
 
 // ---------- Barra de tarefas que se esconde ----------
@@ -119,7 +119,9 @@ function loopCorpo(n) {
             if (!dir && Math.abs(vx) < 1) vx = 0;
         }
 
+        const pxAntes = px;
         px = Math.max(minX, Math.min(maxX, px + vx * dt));
+        andouPx += px - pxAntes;
         const X = Math.round(px), Y = Math.round(py);
         if (X !== uX || Y !== uY) { uX = X; uY = Y; window.arachne.moverJanela(X, Y); }
     }

@@ -215,6 +215,7 @@ function frame(n) {
         }
         ax = wx; ay = wy;
     }
+    if (Math.abs(vx) > 3) { ax = Math.sign(vx) * 200; ay = 0; }   // andando: olha para onde vai
     const d = Math.hypot(ax, ay) || 1;
     const m = Math.min(1, d / 200) * cur.lk;          // cur.lk: cada emoção segue o mouse num grau (sono = 0)
     const f = Math.min(1, dt * 10);
