@@ -18,6 +18,14 @@ let barraAnim = 0, chaoPrev = NaN;   // 0 = barra escondida, 1 = visível (desli
 let subir = false;               // a barra acabou de aparecer: é hora de pular
 let encostouEm = 0, afastouEm = 0, mouseSy = NaN;
 
+// ---------- Teia ----------
+const VEL_FIO = 140;                      // velocidade de subir/descer (px/s)
+const TEIA_INTERVALO = [15000, 40000];    // tempo sorteado até a próxima subida (ms)
+let fase = 'chao';                        // 'chao' | 'subindo' | 'topo' | 'descendo'
+let fioX = 0, fvy = 0, topoAte = 0;       // x do fio na tela, velocidade vertical, fim da espera no topo
+let pendurada = false;                    // o code.js usa isto para a pose de "pendurada"
+let proxTeia = performance.now() + 8000;  // primeira subida automática em ~8 s
+
 // Pergunta ao main.js onde a janela está e qual é a área útil da tela
 function sincronizar(e) {
     px = e.x; py = e.y; area = e.area; bounds = e.bounds;
@@ -68,12 +76,14 @@ function loopCorpo(n) {
 
     barraAnim += ((barraVisivel ? 1 : 0) - barraAnim) * Math.min(1, dt * 18);   // desliza em ~0,2 s, como a barra
 
-    if (pronto && (arrastando || press)) {          // o mouse está segurando: a janela é dele
+    if (pronto && (arrastando || press)) {
         vx = 0; modo.ate = n + 1500;
-        if (arrastando) estavaArrastando = true;
+        if (arrastando) { estavaArrastando = true; if (fase !== 'chao') terminarTeia(false); }   // arrastada: corta o fio
     } else if (estavaArrastando) {                  // acabou de ser solta: descobre onde ficou
         estavaArrastando = false; pronto = false;
         window.arachne.estado().then(sincronizar);
+    } else if (pronto && fase !== 'chao') {         // na teia: subir, esperar ou descer
+        teiaPasso(n, dt);
     } else if (pronto) {
         const chao = chaoAtual(), minX = area.x, maxX = area.x + area.width - dimJ.l;
         // o chão (a barra) está deslizando: se ela estava em pé nele, vai junto, sem pulo nem queda
@@ -105,6 +115,7 @@ function loopCorpo(n) {
         } else {                                    // no chão: decide se anda
             py = chao;
             const livre = ANDAR_SOZINHA && (emo === 'normal' || emo === 'curioso') && base !== 'sono' && !hover;
+            if (livre && n > proxTeia) iniciarTeia();   // de vez em quando, sobe pela teia
             let dir = 0;
             if (livre) {
                 if (n > modo.ate) {
@@ -145,19 +156,49 @@ if (window.arachne) {
     svg.addEventListener('contextmenu', e => { e.preventDefault(); window.arachne.menu(); });
 }
 
-// ---------- Fio (teia): teste ----------
-let fioTeste = false;
-if (window.arachne) window.arachne.aoTesteFio(() => {
-    fioTeste = !fioTeste;
-    if (!fioTeste) window.arachne.fio();            // desligou: apaga
-});
+// ---------- Teia: subir e descer pelo fio ----------
+if (window.arachne) window.arachne.aoTesteFio(() => iniciarTeia());   // item do menu: dispara na hora
 
-// Do topo da tela até o ponto logo acima da cabeça. Tudo em coordenadas da TELA.
+function iniciarTeia() {
+    if (fase !== 'chao' || !pronto || noAr) return;
+    fioX = px + dimJ.l / 2;           // o fio fica fixo neste x (centro da janela agora)
+    vx = 0; fvy = 0;
+    fase = 'subindo';
+    pendurada = true;                 // liga a pose pendurada (car sobe de 0 a 1 suavemente)
+}
+
+// Termina a teia. pousou = true: chegou ao chão; false: foi arrastada (cai sozinha depois).
+function terminarTeia(pousou) {
+    fase = 'chao'; pendurada = false; fvy = 0;
+    proxTeia = performance.now() + TEIA_INTERVALO[0] + Math.random() * (TEIA_INTERVALO[1] - TEIA_INTERVALO[0]);
+    window.arachne.fio();                                   // sem argumentos: apaga o fio
+    if (pousou) { py = chaoAtual(); chaoPrev = py; qs = 0.12; }   // amassadinha ao pousar
+}
+
+// Um quadro de movimento na teia
+function teiaPasso(n, dt) {
+    const chao = chaoAtual(), topo = bounds.y;
+    let alvo = 0;                                            // velocidade desejada (px/s); negativo = sobe
+
+    if (fase === 'subindo') {
+        alvo = -VEL_FIO * Math.min(1, (py - topo) / 120 + 0.1);   // freia ao chegar no topo
+        if (py <= topo + 1) { fase = 'topo'; topoAte = n + 3000 + Math.random() * 4000; pendV = 1.5; }   // pendV: balançadinha
+    } else if (fase === 'descendo') {
+        alvo = VEL_FIO * Math.min(1, (chao - py) / 120 + 0.1);    // freia ao chegar no chão
+        if (py >= chao - 1) { terminarTeia(true); return; }
+    } else if (n > topoAte) fase = 'descendo';               // 'topo': espera pendurada
+
+    fvy += (alvo - fvy) * Math.min(1, dt * 4);               // acelera e freia suavemente (como o vx)
+    py = Math.max(topo, Math.min(chao, py + fvy * dt));
+    px = fioX - dimJ.l / 2;
+    window.arachne.moverJanela(Math.round(px), Math.round(py));
+}
+
+// Manda o fio para o overlay: do topo da tela até o ponto onde ela "se segura" (coordenadas da TELA)
 function enviarFio() {
-    if (!fioTeste || !pronto) return;
+    if (fase === 'chao' || !pronto) return;
     const r = svg.getBoundingClientRect();
-    const esc = Math.min(r.width / 360, r.height / 220);           // unidade SVG -> px
-    const ax = px + r.left + r.width / 2;                           // x da cabeça na tela
-    const ay = py + r.top + r.height * 0.64 - 40 * esc;             // 0.64 = onde fica a cabeça (igual ao centro())
-    window.arachne.fio(ax, bounds.y, ax, ay);
+    const esc = Math.min(r.width / 360, r.height / 220);
+    const ay = py + r.top + r.height * 0.64 - (40 + 35 * car) * esc;   // 40 = PIVO_PEGA; 35 = quanto o corpo sobe ao pendurar
+    window.arachne.fio(fioX, bounds.y, fioX, ay);
 }

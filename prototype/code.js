@@ -245,7 +245,7 @@ function frame(n) {
     qs += qv * dt;
 
     // 5b. carregada: pêndulo preso no ponto onde ela é segurada
-    car += ((emo === 'carregada' ? 1 : 0) - car) * Math.min(1, dt * 8);
+    car += (((emo === 'carregada' || pendurada) ? 1 : 0) - car) * Math.min(1, dt * 8);
     let acel = 0;
     if (arrastando && !isNaN(ultSx)) {
         if (!isNaN(sxAnt)) {

@@ -125,7 +125,7 @@ ipcMain.on('fio', (evento, x1, y1, x2, y2) => {
 // ---------- Menu e ciclo de vida ----------
 ipcMain.on('menu', () => {
     Menu.buildFromTemplate([
-        { label: 'Testar fio', click: () => janela.webContents.send('fio-teste') },
+        { label: 'Subir pela teia', click: () => janela.webContents.send('fio-teste') },
         { label: 'Sair', click: () => app.quit() }
     ]).popup({ window: janela });
 });
