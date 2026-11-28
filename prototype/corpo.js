@@ -126,8 +126,10 @@ function loopCorpo(n) {
         if (X !== uX || Y !== uY) { uX = X; uY = Y; window.arachne.moverJanela(X, Y); }
     }
 
+    enviarFio();
     requestAnimationFrame(loopCorpo);
 }
+
 if (window.arachne) requestAnimationFrame(loopCorpo);   // no navegador não há janela para mover
 
 // A janela começa "fantasma" (ignora o mouse). Só fica sólida quando o cursor está sobre o corpo.
@@ -141,4 +143,21 @@ if (window.arachne) {
     });
     // Clique direito: menu com "Sair"
     svg.addEventListener('contextmenu', e => { e.preventDefault(); window.arachne.menu(); });
+}
+
+// ---------- Fio (teia): teste ----------
+let fioTeste = false;
+if (window.arachne) window.arachne.aoTesteFio(() => {
+    fioTeste = !fioTeste;
+    if (!fioTeste) window.arachne.fio();            // desligou: apaga
+});
+
+// Do topo da tela até o ponto logo acima da cabeça. Tudo em coordenadas da TELA.
+function enviarFio() {
+    if (!fioTeste || !pronto) return;
+    const r = svg.getBoundingClientRect();
+    const esc = Math.min(r.width / 360, r.height / 220);           // unidade SVG -> px
+    const ax = px + r.left + r.width / 2;                           // x da cabeça na tela
+    const ay = py + r.top + r.height * 0.64 - 40 * esc;             // 0.64 = onde fica a cabeça (igual ao centro())
+    window.arachne.fio(ax, bounds.y, ax, ay);
 }

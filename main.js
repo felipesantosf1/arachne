@@ -10,6 +10,22 @@ const ALTURA = Math.round(295 * ESCALA);    // altura da janela (px)
 let janela;                // a janela do pet
 let posInicial = [0, 0];   // posição da janela ao começar a arrastar [x, y]
 
+let overlay;   // janela que só desenha a teia
+
+function criarOverlay() {
+    const b = screen.getPrimaryDisplay().bounds;   // tela inteira (não só a área útil)
+    overlay = new BrowserWindow({
+        x: b.x, y: b.y, width: b.width, height: b.height,
+        transparent: true, frame: false, resizable: false, hasShadow: false,
+        skipTaskbar: true,
+        focusable: false,                           // nunca rouba o foco do que você está usando
+        webPreferences: { preload: path.join(__dirname, 'preload.js') }
+    });
+    overlay.setIgnoreMouseEvents(true);             // fantasma total: o mouse sempre atravessa
+    overlay.setAlwaysOnTop(true, 'screen-saver');
+    overlay.loadFile(path.join(__dirname, 'prototype', 'overlay.html'));
+}
+
 // ---------- Criar a janela ----------
 function criarJanela() {
     const area = screen.getPrimaryDisplay().workArea;   // tela sem a barra de tarefas
@@ -98,12 +114,21 @@ ipcMain.on('interativo', (evento, sim) => {
     janela.setIgnoreMouseEvents(!sim);
 });
 
+// A aranha pede um fio (coordenadas da TELA); o overlay desenha. Sem argumentos = apagar.
+ipcMain.on('fio', (evento, x1, y1, x2, y2) => {
+    if (!overlay || overlay.isDestroyed()) return;
+    if (x1 === undefined) return overlay.webContents.send('fio');
+    const o = overlay.getBounds();                  // tela -> coordenadas do overlay
+    overlay.webContents.send('fio', x1 - o.x, y1 - o.y, x2 - o.x, y2 - o.y);
+});
+
 // ---------- Menu e ciclo de vida ----------
 ipcMain.on('menu', () => {
     Menu.buildFromTemplate([
+        { label: 'Testar fio', click: () => janela.webContents.send('fio-teste') },
         { label: 'Sair', click: () => app.quit() }
     ]).popup({ window: janela });
 });
 
-app.whenReady().then(criarJanela);                  // abre a janela quando o Electron estiver pronto
+app.whenReady().then(() => { criarOverlay(); criarJanela(); });   // abre a janela quando o Electron estiver pronto, overlay primeiro: a aranha fica POR CIMA do fio
 app.on('window-all-closed', () => app.quit());      // fechou tudo, encerra o programa
